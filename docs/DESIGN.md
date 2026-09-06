@@ -1,12 +1,14 @@
 # Serein Day 设计标注文件
 
-> Acid Lime 设计系统（高对比 Web3 / FinTech × 轻 Neo-Brutalism） · v1.5.0
+> Acid Lime 设计系统（高对比 Web3 / FinTech × 轻 Neo-Brutalism） · v1.5.1
 > 代码对应：`app/src/main/java/com/serein/day/Theme.kt`（色彩令牌）、`Common.kt`（组件与线稿插画）
 
 ## 0. 风格 DNA
 
 Off-white 背景 + Black Card + Acid Lime + Oversized Typography + Rounded Cards + Line Illustration。
 关键词：Cash App UI · Acid Lime Web Design · Web3 Wallet UI · Refined Neo Brutalism · High Contrast Fintech UI。
+
+**信息架构（v1.5.1）**：无底部导航。品牌头部（Serein Day + 设置圆钮）→ 主菜单栏（倒数本胶囊：全部 / 各倒数本 / 管理 / 归档）→ 黑色 Hero 大卡 → 白卡列表 → 底部青柠 CTA。设置、归档、详情、编辑均为推入页面（iOS push/pop 转场）。
 
 ## 1. 设计原则
 
@@ -80,8 +82,8 @@ Off-white 背景 + Black Card + Acid Lime + Oversized Typography + Rounded Cards
 | 卡片内距（列表行） | 16dp 横 / 14dp 纵 |
 | Hero / 里程碑卡内距 | 22dp |
 | 列表行间距 / 组标题上下距 | 12dp / 8dp |
-| 底部主 CTA | 高 56dp 胶囊，左右 20dp、距底 14dp |
-| 底栏 | 图标 23dp + 文字 11sp，选中项上方 16×4dp 青柠指示点 |
+| 底部主 CTA | 高 56dp 胶囊，左右 20dp、距底 16dp（避开手势条） |
+| 主菜单栏 | 倒数本胶囊（全部 / 各倒数本 / 管理 / 归档），横滑，位于品牌头部下方；无底部导航，设置经右上角近黑圆钮进入 |
 
 ## 4. 字号标注
 

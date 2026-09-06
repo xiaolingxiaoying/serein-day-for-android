@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,22 +25,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Monitor
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Sort
-import androidx.compose.material.icons.outlined.Spa
-import androidx.compose.material.icons.outlined.VerifiedUser
-import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
@@ -84,7 +79,8 @@ fun SettingsTab(
     sortOrder: SortOrder,
     onSortOrderChange: (SortOrder) -> Unit,
     onBackup: () -> Unit,
-    onManageBooks: () -> Unit
+    onManageBooks: () -> Unit,
+    onBack: () -> Unit
 ) {
     val s = LocalSerein.current
     val context = LocalContext.current
@@ -98,15 +94,21 @@ fun SettingsTab(
     }
 
     Column(Modifier.fillMaxSize()) {
-        TopBar(title = "设置", large = true)
+        TopBar(
+            title = "设置",
+            large = true,
+            leadingIcon = Icons.AutoMirrored.Filled.ArrowBack,
+            onLeading = onBack
+        )
         Column(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 116.dp)
+                .navigationBarsPadding()
+                .padding(bottom = 36.dp)
         ) {
 
-            // 品牌卡：serein day ✦
+            // 品牌卡：Serein Day
             Row(
                 Modifier
                     .padding(horizontal = 20.dp)
@@ -127,17 +129,13 @@ fun SettingsTab(
                 }
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.Top) {
-                        Text(
-                            "serein day",
-                            color = s.onSurface,
-                            fontSize = 21.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.6).sp
-                        )
-                        Spacer(Modifier.width(3.dp))
-                        Sparkle(Modifier.size(11.dp))
-                    }
+                    Text(
+                        "Serein Day",
+                        color = s.onSurface,
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-0.6).sp
+                    )
                     Spacer(Modifier.height(2.dp))
                     Text("让重要的日子更清晰", color = s.onSurfaceVariant, fontSize = 12.5.sp)
                 }
@@ -226,8 +224,6 @@ fun SettingsTab(
             SettingsSectionLabel("偏好")
             SettingsGroup {
                 SettingsRow(
-                    icon = Icons.Outlined.Spa,
-                    iconBg = PastelMint,
                     title = "极简模式",
                     subtitle = if (minimalMode) "已开启：纯列表，隐藏装饰与图片设置" else "纯列表展示，隐藏封面、插画等装饰",
                     trailing = {
@@ -236,8 +232,6 @@ fun SettingsTab(
                 )
                 GroupDivider()
                 SettingsRow(
-                    icon = Icons.Outlined.Sort,
-                    iconBg = PastelSky,
                     title = "排序方式",
                     subtitle = sortOrderLabel(sortOrder),
                     trailing = { Chevron() },
@@ -245,8 +239,6 @@ fun SettingsTab(
                 )
                 GroupDivider()
                 SettingsRow(
-                    icon = Icons.Filled.Edit,
-                    iconBg = PastelButter,
                     title = "倒数本管理",
                     subtitle = "共 ${books.size} 本 · 新建、重命名或删除",
                     trailing = { Chevron() },
@@ -254,8 +246,6 @@ fun SettingsTab(
                 )
                 GroupDivider()
                 SettingsRow(
-                    icon = Icons.Outlined.Notifications,
-                    iconBg = PastelLavender,
                     title = "常驻通知",
                     subtitle = if (pinnedNotif) "已在通知栏显示置顶倒数卡" else "在通知栏常驻显示置顶的倒数卡",
                     trailing = {
@@ -273,8 +263,6 @@ fun SettingsTab(
                 )
                 GroupDivider()
                 SettingsRow(
-                    icon = Icons.Outlined.Vibration,
-                    iconBg = PastelBlush,
                     title = "触感反馈",
                     subtitle = "操作按钮与倒数时翻页振动",
                     trailing = {
@@ -283,8 +271,6 @@ fun SettingsTab(
                 )
                 GroupDivider()
                 SettingsRow(
-                    icon = Icons.Outlined.Backup,
-                    iconBg = PastelSky,
                     title = "数据与备份",
                     subtitle = "全部记录导出为 JSON 并分享（共 ${days.size} 条）",
                     trailing = { Chevron() },
@@ -295,17 +281,13 @@ fun SettingsTab(
             SettingsSectionLabel("关于软件")
             SettingsGroup {
                 SettingsRow(
-                    icon = Icons.Outlined.Info,
-                    iconBg = PastelMint,
                     title = "关于 Serein Day",
-                    subtitle = "v1.5.0 Acid Lime · Days Matter 式",
+                    subtitle = "v1.5.1 Acid Lime · Days Matter 式",
                     trailing = { Chevron() },
                     onClick = { showAbout = true }
                 )
                 GroupDivider()
                 SettingsRow(
-                    icon = Icons.Outlined.VerifiedUser,
-                    iconBg = PastelButter,
                     title = "用户协议与隐私规范",
                     subtitle = "完全离线存储 · 数据归属于你",
                     trailing = { Chevron() },
@@ -343,7 +325,7 @@ fun SettingsTab(
     if (showAbout) {
         IosAlertDialog(
             title = "关于 Serein Day",
-            message = "Serein Day v1.5.0\nAcid Lime 设计系统 · Material 3\n\n一个简约的倒数日应用：Off-white 底 + 黑色大卡 + 荧光青柠，把重要的日子留在眼前。",
+            message = "Serein Day v1.5.1\nAcid Lime 设计系统 · Material 3\n\n一个简约的倒数日应用：Off-white 底 + 黑色大卡 + 荧光青柠，把重要的日子留在眼前。",
             confirmText = "好的",
             dismissText = null,
             onConfirm = { showAbout = false },
@@ -400,19 +382,17 @@ private fun SettingsGroup(content: @Composable androidx.compose.foundation.layou
 private fun GroupDivider() {
     val s = LocalSerein.current
     HorizontalDivider(
-        modifier = Modifier.padding(start = 66.dp),
+        modifier = Modifier.padding(start = 16.dp),
         color = s.outlineVariant.copy(alpha = 0.5f),
         thickness = 0.5.dp
     )
 }
 
-/** 设置行：马卡龙底色图标圆 + 标题/副标题 + 可选尾随控件。 */
+/** 设置行：标题/副标题 + 可选尾随控件（无图标，纯文字排版）。 */
 @Composable
 private fun SettingsRow(
-    icon: ImageVector,
     title: String,
     subtitle: String,
-    iconBg: Color,
     onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null
 ) {
@@ -421,16 +401,15 @@ private fun SettingsRow(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(13.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        IconCircle(iconBg, icon, Ink, size = 38.dp, iconSize = 18.dp)
         Column(Modifier.weight(1f)) {
             Text(title, color = s.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(1.dp))
             Text(subtitle, color = s.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        Spacer(Modifier.width(12.dp))
         trailing?.invoke()
     }
 }
@@ -542,20 +521,21 @@ private fun PaletteDot(
 ) {
     val s = LocalSerein.current
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        // 纯圆形色点：选中时外圈墨色描边，留一圈底色间隙
         Box(
             modifier = Modifier
-                .size(34.dp)
+                .size(36.dp)
                 .clip(CircleShape)
-                .background(color)
-                .then(
-                    if (selected) Modifier.border(2.5.dp, OnInk, CircleShape) else Modifier
-                )
+                .then(if (selected) Modifier.border(2.dp, OnInk, CircleShape) else Modifier)
                 .clickable(onClick = onSelect),
             contentAlignment = Alignment.Center
         ) {
-            if (selected) {
-                Box(Modifier.size(26.dp).clip(CircleShape).border(2.dp, Ink, CircleShape))
-            }
+            Box(
+                Modifier
+                    .size(if (selected) 24.dp else 30.dp)
+                    .clip(CircleShape)
+                    .background(color)
+            )
         }
         Spacer(Modifier.height(6.dp))
         Text(

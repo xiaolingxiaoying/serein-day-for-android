@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -20,7 +21,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -30,25 +30,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Cake
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Cake
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.FlightTakeoff
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.EditNote
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,7 +51,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -198,77 +184,21 @@ fun BackTopBar(title: String, onBack: () -> Unit, trailingText: String? = null, 
     TopBar(title = title, leadingIcon = Icons.AutoMirrored.Filled.ArrowBack, onLeading = onBack, trailingText = trailingText, onTrailing = onTrailing)
 }
 
-/** 圆形深色按钮（归档 / 菜单入口）：近黑圆底 + 白色图标，呼应参考稿右上角。 */
+/** 圆形深色按钮（设置入口等）：近黑圆底 + 白色图标，深色下补一圈细描边保持可辨。 */
 @Composable
 fun InkCircleButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
+    val s = LocalSerein.current
     Box(
         modifier = Modifier
             .size(44.dp)
             .pressScale(0.9f)
             .clip(CircleShape)
             .background(Ink)
+            .then(if (s.isDark) Modifier.border(1.dp, s.outlineVariant, CircleShape) else Modifier)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = contentDescription, tint = OnInk, modifier = Modifier.size(20.dp))
-    }
-}
-
-@Composable
-fun BottomNavBar(selected: Int, onSelect: (Int) -> Unit) {
-    val s = LocalSerein.current
-    val view = LocalView.current
-    data class Item(val label: String, val icon: ImageVector, val iconSelected: ImageVector)
-    val items = listOf(
-        Item("首页", Icons.Outlined.Home, Icons.Filled.Home),
-        Item("我的", Icons.Outlined.Settings, Icons.Filled.Settings)
-    )
-    Column(Modifier.fillMaxWidth().background(if (s.isDark) Color(0xFF0A0B0C) else Color.White)) {
-        // 滚动边缘软渐变：内容与底栏的衔接不再是一条生硬细线
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(10.dp)
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        1f to Color.Black.copy(alpha = if (s.isDark) 0.45f else 0.07f)
-                    )
-                )
-        )
-        Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(top = 8.dp, bottom = 12.dp)) {
-            val hapticsOn = LocalHapticsEnabled.current
-            items.forEachIndexed { index, item ->
-                val selectedNow = selected == index
-                Column(
-                    modifier = Modifier.weight(1f).clickable {
-                        if (hapticsOn) view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
-                        onSelect(index)
-                    },
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(Modifier.height(5.dp), contentAlignment = Alignment.Center) {
-                        if (selectedNow) {
-                            Box(Modifier.size(width = 16.dp, height = 4.dp).clip(RoundedCornerShape(50)).background(s.accent))
-                        }
-                    }
-                    Spacer(Modifier.height(3.dp))
-                    Icon(
-                        if (selectedNow) item.iconSelected else item.icon,
-                        contentDescription = item.label,
-                        tint = if (selectedNow) s.onSurface else s.onSurfaceVariant,
-                        modifier = Modifier.size(23.dp)
-                    )
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        item.label,
-                        fontSize = 11.sp,
-                        fontWeight = if (selectedNow) FontWeight.Bold else FontWeight.Medium,
-                        color = if (selectedNow) s.onSurface else s.onSurfaceVariant
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -323,15 +253,6 @@ fun PillChip(
     ) {
         if (icon != null) Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(13.dp))
         Text(text, color = contentColor, fontSize = fontSize.sp, fontWeight = FontWeight.SemiBold, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
-    }
-}
-
-@Composable
-fun SectionBar(title: String, trailing: String) {
-    val s = LocalSerein.current
-    Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, color = s.onSurface, fontSize = 16.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        Text(trailing, color = s.onSurfaceVariant, fontSize = 12.5.sp)
     }
 }
 
@@ -560,22 +481,45 @@ private fun DrawScope.drawCalendarArt(sw: Float, stroke: Color, accent: Color) {
     drawLine(stroke, Offset(w * 0.34f, h * 0.68f), Offset(w * 0.66f, h * 0.68f), sw * 0.7f)
 }
 
-/** 加载封面副本文件为位图（解码到目标宽度以内，避免整图内存）。 */
-@Composable
-fun rememberCoverBitmap(cover: String?, coverStore: CoverStore): androidx.compose.ui.graphics.ImageBitmap? {
-    return remember(cover) {
-        cover ?: return@remember null
-        val file: File = coverStore.resolve(cover)
-        if (!file.exists()) return@remember null
-        runCatching {
+/** 封面位图 Lru 内存缓存：列表滚动与页面往返不再反复解码（修复归档页首次打开卡顿）。 */
+private object CoverBitmapCache {
+    private const val MAX_DIMEN = 720
+    private val cache = androidx.collection.LruCache<String, androidx.compose.ui.graphics.ImageBitmap>(24)
+
+    fun peek(name: String): androidx.compose.ui.graphics.ImageBitmap? = cache.get(name)
+
+    fun load(name: String, coverStore: CoverStore): androidx.compose.ui.graphics.ImageBitmap? {
+        cache.get(name)?.let { return it }
+        val file: File = coverStore.resolve(name)
+        if (!file.exists()) return null
+        val bitmap = runCatching {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeFile(file.absolutePath, bounds)
             var sample = 1
-            while (bounds.outWidth / (sample * 2) >= 1080) sample *= 2
-            val options = BitmapFactory.Options().apply { inSampleSize = sample }
-            BitmapFactory.decodeFile(file.absolutePath, options)?.asImageBitmap()
-        }.getOrNull()
+            while (bounds.outWidth / (sample * 2) >= MAX_DIMEN || bounds.outHeight / (sample * 2) >= MAX_DIMEN) sample *= 2
+            BitmapFactory.decodeFile(file.absolutePath, BitmapFactory.Options().apply { inSampleSize = sample })
+        }.getOrNull() ?: return null
+        val imageBitmap = bitmap.asImageBitmap()
+        cache.put(name, imageBitmap)
+        return imageBitmap
     }
+}
+
+/** 加载封面副本为位图：IO 线程解码、主线程零阻塞，命中缓存即同步返回。 */
+@Composable
+fun rememberCoverBitmap(cover: String?, coverStore: CoverStore): androidx.compose.ui.graphics.ImageBitmap? {
+    if (cover == null) return null
+    val state = androidx.compose.runtime.produceState(
+        initialValue = CoverBitmapCache.peek(cover),
+        key1 = cover
+    ) {
+        if (value == null) {
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                CoverBitmapCache.load(cover, coverStore)
+            }
+        }
+    }
+    return state.value
 }
 
 /** 列表行的小记数徽标（零小记时隐藏）。 */

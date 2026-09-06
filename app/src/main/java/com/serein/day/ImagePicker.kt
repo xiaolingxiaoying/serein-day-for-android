@@ -85,7 +85,11 @@ fun ImageSourceDialog(
         cameraLauncher.launch(uri)
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    val s = LocalSerein.current
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = if (s.isDark) s.container else androidx.compose.ui.graphics.Color.White
+    ) {
         Text(
             title,
             color = LocalSerein.current.onSurface,

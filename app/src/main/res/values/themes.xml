@@ -3,7 +3,7 @@
     <style name="Theme.SereinDay" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:colorAccent">#006B5B</item>
-        <item name="android:windowBackground">#F3FCF4</item>
+        <item name="android:colorAccent">#7FA30A</item>
+        <item name="android:windowBackground">#F1F2F4</item>
     </style>
 </resources>

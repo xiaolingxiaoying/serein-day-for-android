@@ -38,10 +38,12 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -80,15 +82,18 @@ fun DetailScreen(
     onArchive: (String) -> Unit,
     onRestore: (String) -> Unit,
     onDelete: (String) -> Unit,
-    onWallpaperChange: (String?) -> Unit
+    onWallpaperChange: (String?) -> Unit,
+    onWallpaperDimChange: (Float) -> Unit
 ) {
     val s = LocalSerein.current
     var pickingWallpaper by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     val wallpaperBitmap = rememberCoverBitmap(day.wallpaper, coverStore)
+    // 壁纸压暗强度：拖动时本地实时生效，松手才落库
+    var wallpaperDim by remember(day.id, day.wallpaper) { mutableFloatStateOf(day.wallpaperDim ?: 0.45f) }
 
     Box(Modifier.fillMaxSize().background(s.surface)) {
-        // 整页背景壁纸 + 压暗遮罩，保证前景文字可读
+        // 整页背景壁纸 + 可调压暗遮罩，保证前景文字可读
         if (wallpaperBitmap != null) {
             Image(
                 bitmap = wallpaperBitmap,
@@ -96,7 +101,7 @@ fun DetailScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = wallpaperDim)))
         }
         Column(Modifier.fillMaxSize()) {
             DetailTopBar(
@@ -129,7 +134,7 @@ fun DetailScreen(
                     .fillMaxSize()
                     .navigationBarsPadding()
                     .verticalScroll(rememberScrollState())
-                    .padding(start = 20.dp, end = 20.dp, bottom = 32.dp),
+                    .padding(start = 20.dp, end = 20.dp, bottom = if (wallpaperBitmap != null && !day.archived) 110.dp else 32.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 MilestoneCard(day, books, coverStore, minimal = minimalMode)
@@ -149,6 +154,41 @@ fun DetailScreen(
                     onArchive = { onArchive(day.id) },
                     onRestore = { onRestore(day.id) },
                     onDelete = { confirmDelete = true }
+                )
+            }
+        }
+
+        // 壁纸透明度调节浮层：拖动实时预览，松手保存
+        if (wallpaperBitmap != null && !day.archived) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 14.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Ink.copy(alpha = 0.92f))
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Outlined.Wallpaper,
+                    contentDescription = null,
+                    tint = OnInk,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("背景", color = OnInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Slider(
+                    value = wallpaperDim,
+                    onValueChange = { wallpaperDim = it },
+                    onValueChangeFinished = { onWallpaperDimChange(wallpaperDim) },
+                    valueRange = 0f..0.85f,
+                    colors = androidx.compose.material3.SliderDefaults.colors(
+                        thumbColor = s.accent,
+                        activeTrackColor = s.accent,
+                        inactiveTrackColor = Color.White.copy(alpha = 0.22f)
+                    ),
+                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
                 )
             }
         }
@@ -303,13 +343,16 @@ private fun MilestoneCard(day: Countdown, books: List<Book>, coverStore: CoverSt
     val cover = rememberCoverBitmap(day.cover, coverStore)
     val bookName = books.find { it.id == day.bookId }?.name ?: "纪念日"
     val heroBg = if (s.isDark) Color(0xFF101318) else Ink
+    val heroShape = RoundedCornerShape(30.dp)
+    val heroBorder = if (s.isDark) Modifier.border(1.dp, s.outlineVariant, heroShape) else Modifier
 
     if (minimal) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(30.dp))
+                .clip(heroShape)
                 .background(heroBg)
+                .then(heroBorder)
                 .padding(22.dp)
         ) {
             Text(
@@ -358,8 +401,9 @@ private fun MilestoneCard(day: Countdown, books: List<Book>, coverStore: CoverSt
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(30.dp))
+            .clip(heroShape)
             .background(heroBg)
+            .then(heroBorder)
             .padding(22.dp)
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

@@ -27,8 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -59,6 +58,7 @@ fun HomeTab(
     onManageBooks: () -> Unit,
     onOpen: (String) -> Unit,
     onOpenArchive: () -> Unit,
+    onOpenSettings: () -> Unit,
     coverStore: CoverStore,
     minimalMode: Boolean,
     sortOrder: SortOrder
@@ -85,9 +85,9 @@ fun HomeTab(
         BrandHeader(
             subtitle = books.find { it.id == selectedBookId }?.name?.let { "倒数本 · $it" }
                 ?: "记录每一个重要时刻 · ${LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("M月d日 "))}${weekdayFull(LocalDate.now())}",
-            onArchive = onOpenArchive
+            onOpenSettings = onOpenSettings
         )
-        BookChipsRow(books, selectedBookId, onBookSelect, onManageBooks)
+        BookChipsRow(books, selectedBookId, onBookSelect, onManageBooks, onOpenArchive)
         if (visible.isEmpty()) {
             EmptyBook(selectedBookId != null)
             return
@@ -96,12 +96,12 @@ fun HomeTab(
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 136.dp),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 150.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (hero != null) {
                     item(key = "hero", contentType = "hero") {
-                        HeroCard(hero, books, coverStore) { onOpen(hero.id) }
+                        HeroCard(hero, coverStore) { onOpen(hero.id) }
                     }
                 }
                 groups.forEach { (label, itemsInGroup) ->
@@ -129,9 +129,9 @@ fun HomeTab(
     }
 }
 
-/** 品牌头部：serein day ✦ 大字标 + 副标题，右侧近黑圆钮（归档）。 */
+/** 品牌头部：Serein Day 大字标 + 副标题，右侧近黑圆钮（设置）。 */
 @Composable
-private fun BrandHeader(subtitle: String, onArchive: () -> Unit) {
+private fun BrandHeader(subtitle: String, onOpenSettings: () -> Unit) {
     val s = LocalSerein.current
     Row(
         modifier = Modifier
@@ -141,31 +141,28 @@ private fun BrandHeader(subtitle: String, onArchive: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.Top) {
-                Text(
-                    "serein day",
-                    color = s.onSurface,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-1.2).sp
-                )
-                Spacer(Modifier.width(4.dp))
-                Sparkle(Modifier.size(16.dp).padding(top = 0.dp))
-            }
+            Text(
+                "Serein Day",
+                color = s.onSurface,
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1.2).sp
+            )
             Spacer(Modifier.height(3.dp))
             Text(subtitle, color = s.onSurfaceVariant, fontSize = 12.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        InkCircleButton(Icons.Outlined.Inventory2, contentDescription = "归档", onClick = onArchive)
+        InkCircleButton(Icons.Filled.Settings, contentDescription = "设置", onClick = onOpenSettings)
     }
 }
 
-/** 顶栏下方的倒数本横滑切换：选中态近黑胶囊，白色未选中。 */
+/** 主菜单栏：倒数本横滑切换（全部 / 各倒数本 / 管理 / 归档）。 */
 @Composable
 private fun BookChipsRow(
     books: List<Book>,
     selectedBookId: String?,
     onSelect: (String?) -> Unit,
-    onManage: () -> Unit
+    onManage: () -> Unit,
+    onArchive: () -> Unit
 ) {
     val s = LocalSerein.current
     Row(
@@ -181,6 +178,7 @@ private fun BookChipsRow(
             BookChip(book.name, selectedBookId == book.id) { onSelect(book.id) }
         }
         BookChip("管理", false, outline = true) { onManage() }
+        BookChip("归档", false, outline = true) { onArchive() }
     }
 }
 
@@ -248,25 +246,26 @@ private fun EmptyBook(isBook: Boolean) {
     }
 }
 
-/** 首页置顶的里程碑大卡：近黑底 + 青柠超大数字 + 线稿插画。 */
+/** 首页置顶的里程碑大卡：近黑底 + 青柠超大数字。 */
 @Composable
-fun HeroCard(day: Countdown, books: List<Book>, coverStore: CoverStore, onOpen: () -> Unit) {
+fun HeroCard(day: Countdown, coverStore: CoverStore, onOpen: () -> Unit) {
     val s = LocalSerein.current
     val remaining = remainingDays(day)
     val pinned = day.priority == 2
     val cover = rememberCoverBitmap(day.cover, coverStore)
-    val bookName = books.find { it.id == day.bookId }?.name ?: "纪念日"
     val heroBg = if (s.isDark) Color(0xFF101318) else Ink
+    val heroShape = RoundedCornerShape(30.dp)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .pressScale(0.98f)
-            .clip(RoundedCornerShape(30.dp))
+            .clip(heroShape)
             .background(heroBg)
+            .then(if (s.isDark) Modifier.border(1.dp, s.outlineVariant, heroShape) else Modifier)
             .clickable(onClick = onOpen)
     ) {
-        // 封面图整卡铺底 + 压暗，保证前景数字可读；无封面时右侧出线稿插画
+        // 封面图整卡铺底 + 压暗，保证前景数字可读
         if (cover != null) {
             CoverImage(cover, Modifier.matchParentSize())
             Box(Modifier.matchParentSize().background(heroBg.copy(alpha = 0.68f)))
@@ -285,29 +284,18 @@ fun HeroCard(day: Countdown, books: List<Book>, coverStore: CoverStore, onOpen: 
                     Text(
                         day.title,
                         color = OnInk,
-                        fontSize = 26.sp,
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(Modifier.height(5.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Outlined.CalendarMonth,
-                            contentDescription = null,
-                            tint = OnInkMuted,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(Modifier.width(5.dp))
-                        Text(dateText(day), color = OnInkMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     if (pinned) {
                         PillChip("置顶", s.accent, s.onAccent)
                     } else {
-                        Sparkle(Modifier.size(22.dp))
+                        Sparkle(Modifier.size(22.dp), color = s.accent)
                     }
                     Spacer(Modifier.height(8.dp))
                     val latestNote = day.notes.maxByOrNull { it.createdAt }?.text?.take(12)?.ifBlank { null }
@@ -324,36 +312,24 @@ fun HeroCard(day: Countdown, books: List<Book>, coverStore: CoverStore, onOpen: 
                     }
                 }
             }
-            Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-                Column {
-                    Text(statusWord(remaining), color = OnInkMuted, fontSize = 14.sp)
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(
-                            kotlin.math.abs(remaining).toString(),
-                            color = s.accent,
-                            fontSize = 86.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-4).sp,
-                            style = TnumStyle
-                        )
-                        if (remaining != 0L) {
-                            Text(
-                                " 天",
-                                color = OnInk,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.weight(1f))
-                if (cover == null) {
-                    HeroIllustration(
-                        bookName,
-                        modifier = Modifier.size(width = 132.dp, height = 128.dp).padding(bottom = 6.dp),
-                        accent = s.accent
+            Spacer(Modifier.height(18.dp))
+            Text(statusWord(remaining), color = OnInkMuted, fontSize = 14.sp)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    kotlin.math.abs(remaining).toString(),
+                    color = s.accent,
+                    fontSize = 86.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-4).sp,
+                    style = TnumStyle
+                )
+                if (remaining != 0L) {
+                    Text(
+                        " 天",
+                        color = OnInk,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
                     )
                 }
             }

@@ -9,11 +9,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -22,8 +20,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -127,7 +125,7 @@ private fun SereinApp(
 ) {
     val s = LocalSerein.current
     val context = LocalContext.current
-    var tab by remember { mutableIntStateOf(0) }
+    var showSettings by remember { mutableStateOf(false) }
     var adding by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Countdown?>(null) }
     var detailId by remember { mutableStateOf<String?>(null) }
@@ -142,11 +140,12 @@ private fun SereinApp(
     var lastEditorInitial by remember { mutableStateOf<Countdown?>(null) }
     if (detailId != null) lastDetailId = detailId
     if (overlayOpen) lastEditorInitial = editing
-    BackHandler(enabled = overlayOpen || detailId != null || showArchive) {
+    BackHandler(enabled = overlayOpen || detailId != null || showSettings || showArchive) {
         when {
             editing != null -> editing = null
             adding -> adding = false
             detailId != null -> detailId = null
+            showSettings -> showSettings = false
             else -> showArchive = false
         }
     }
@@ -155,16 +154,17 @@ private fun SereinApp(
         onDaysChange(days.map { if (it.id == id) transform(it) else it })
     }
 
-    /** 页面栈深度：Main(0) → Archive(1) → Detail(2) → Editor(3)，越深越靠顶层。 */
+    /** 页面栈深度：Main(0) → Settings/Archive(1) → Detail(2) → Editor(3)，越深越靠顶层。 */
     fun depthOf(screen: Screen): Int = when (screen) {
         Screen.Main -> 0
-        Screen.Archive -> 1
+        Screen.Settings, Screen.Archive -> 1
         Screen.Detail -> 2
         Screen.Editor -> 3
     }
     val screen = when {
         overlayOpen -> Screen.Editor
         detailId != null && days.any { it.id == detailId } -> Screen.Detail
+        showSettings -> Screen.Settings
         showArchive -> Screen.Archive
         else -> Screen.Main
     }
@@ -284,6 +284,9 @@ private fun SereinApp(
                             },
                             onWallpaperChange = { name ->
                                 mutateDay(detailDay.id) { it.copy(wallpaper = name) }
+                            },
+                            onWallpaperDimChange = { dim ->
+                                mutateDay(detailDay.id) { it.copy(wallpaperDim = dim) }
                             }
                         )
                     } else {
@@ -291,6 +294,27 @@ private fun SereinApp(
                         Box(Modifier.fillMaxSize().background(s.surface))
                     }
                 }
+                Screen.Settings -> SettingsTab(
+                    days = days,
+                    books = books,
+                    paletteIndex = paletteIndex,
+                    onPaletteChange = onPaletteChange,
+                    customPrimary = customPrimary,
+                    onCustomPrimaryChange = onCustomPrimaryChange,
+                    modeIndex = modeIndex,
+                    onModeChange = onModeChange,
+                    haptics = haptics,
+                    onHapticsChange = onHapticsChange,
+                    pinnedNotif = pinnedNotif,
+                    onPinnedNotifChange = onPinnedNotifChange,
+                    minimalMode = minimalMode,
+                    onMinimalModeChange = onMinimalModeChange,
+                    sortOrder = sortOrder,
+                    onSortOrderChange = onSortOrderChange,
+                    onBackup = { shareText(context, "Serein Day 备份", DayRepository.toJson(days)) },
+                    onManageBooks = { showBookManager = true },
+                    onBack = { showSettings = false }
+                )
                 Screen.Archive -> ArchiveScreen(
                     days = days,
                     books = books,
@@ -298,14 +322,19 @@ private fun SereinApp(
                     onOpen = { detailId = it; showArchive = false },
                     coverStore = coverStore
                 )
-                Screen.Main -> MainTabs(
-                    days, onDaysChange, books, onBooksChange, coverStore,
-                    tab, { tab = it }, haptics, { adding = true },
-                    selectedBookId, { selectedBookId = it }, { showBookManager = true },
-                    { detailId = it }, { showArchive = true },
-                    paletteIndex, onPaletteChange, customPrimary, onCustomPrimaryChange,
-                    modeIndex, onModeChange, onHapticsChange, pinnedNotif, onPinnedNotifChange,
-                    minimalMode, onMinimalModeChange, sortOrder, onSortOrderChange
+                Screen.Main -> MainScreen(
+                    days = days,
+                    books = books,
+                    coverStore = coverStore,
+                    minimalMode = minimalMode,
+                    sortOrder = sortOrder,
+                    selectedBookId = selectedBookId,
+                    onSelectedBookChange = { selectedBookId = it },
+                    onManageBooks = { showBookManager = true },
+                    onOpenDetail = { detailId = it },
+                    onOpenArchive = { showArchive = true },
+                    onOpenSettings = { showSettings = true },
+                    onAdd = { adding = true }
                 )
                 }
             }
@@ -330,87 +359,44 @@ private fun SereinApp(
 }
 
 /** 全屏页面栈标识，用于切换动画的方向判断。 */
-private enum class Screen { Main, Archive, Detail, Editor }
+private enum class Screen { Main, Settings, Archive, Detail, Editor }
 
 @Composable
-private fun MainTabs(
+private fun MainScreen(
     days: List<Countdown>,
-    onDaysChange: (List<Countdown>) -> Unit,
     books: List<Book>,
-    onBooksChange: (List<Book>) -> Unit,
     coverStore: CoverStore,
-    tab: Int,
-    onTabChange: (Int) -> Unit,
-    haptics: Boolean,
-    onAdd: () -> Unit,
+    minimalMode: Boolean,
+    sortOrder: SortOrder,
     selectedBookId: String?,
     onSelectedBookChange: (String?) -> Unit,
     onManageBooks: () -> Unit,
     onOpenDetail: (String) -> Unit,
     onOpenArchive: () -> Unit,
-    paletteIndex: Int,
-    onPaletteChange: (Int) -> Unit,
-    customPrimary: Int,
-    onCustomPrimaryChange: (Int) -> Unit,
-    modeIndex: Int,
-    onModeChange: (Int) -> Unit,
-    onHapticsChange: (Boolean) -> Unit,
-    pinnedNotif: Boolean,
-    onPinnedNotifChange: (Boolean) -> Unit,
-    minimalMode: Boolean,
-    onMinimalModeChange: (Boolean) -> Unit,
-    sortOrder: SortOrder,
-    onSortOrderChange: (SortOrder) -> Unit
+    onOpenSettings: () -> Unit,
+    onAdd: () -> Unit
 ) {
-    val context = LocalContext.current
-    Column(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(1f)) {
-            Crossfade(targetState = tab, animationSpec = tween(200), label = "tab") { page ->
-                when (page) {
-                    0 -> HomeTab(
-                        days = days,
-                        books = books,
-                        selectedBookId = selectedBookId,
-                        onBookSelect = onSelectedBookChange,
-                        onManageBooks = onManageBooks,
-                        onOpen = onOpenDetail,
-                        onOpenArchive = onOpenArchive,
-                        coverStore = coverStore,
-                        minimalMode = minimalMode,
-                        sortOrder = sortOrder
-                    )
-                    else -> SettingsTab(
-                        days = days,
-                        books = books,
-                        paletteIndex = paletteIndex,
-                        onPaletteChange = onPaletteChange,
-                        customPrimary = customPrimary,
-                        onCustomPrimaryChange = onCustomPrimaryChange,
-                        modeIndex = modeIndex,
-                        onModeChange = onModeChange,
-                        haptics = haptics,
-                        onHapticsChange = onHapticsChange,
-                        pinnedNotif = pinnedNotif,
-                        onPinnedNotifChange = onPinnedNotifChange,
-                        minimalMode = minimalMode,
-                        onMinimalModeChange = onMinimalModeChange,
-                        sortOrder = sortOrder,
-                        onSortOrderChange = onSortOrderChange,
-                        onBackup = { shareText(context, "Serein Day 备份", DayRepository.toJson(days)) },
-                        onManageBooks = onManageBooks
-                    )
-                }
-            }
-            if (tab == 0) {
-                AddPillButton(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                    onClick = onAdd
-                )
-            }
-        }
-        BottomNavBar(selected = tab, onSelect = onTabChange)
+    Box(Modifier.fillMaxSize()) {
+        HomeTab(
+            days = days,
+            books = books,
+            selectedBookId = selectedBookId,
+            onBookSelect = onSelectedBookChange,
+            onManageBooks = onManageBooks,
+            onOpen = onOpenDetail,
+            onOpenArchive = onOpenArchive,
+            onOpenSettings = onOpenSettings,
+            coverStore = coverStore,
+            minimalMode = minimalMode,
+            sortOrder = sortOrder
+        )
+        AddPillButton(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            onClick = onAdd
+        )
     }
 }
 

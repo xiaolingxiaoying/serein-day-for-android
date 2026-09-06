@@ -29,6 +29,7 @@ enum class SortOrder { BY_REMAINING, BY_DATE, BY_CREATED }
  * 倒数事件。
  * date 为公历锚点日期；lunar=true 表示按其农历月日记忆；repeatYearly=true 表示每年重复。
  * cover 为卡片封面副本文件名；wallpaper 为详情页背景壁纸副本文件名（两者独立）。
+ * wallpaperDim 为详情页壁纸压暗遮罩强度（0–0.85），null 表示默认 0.45。
  */
 data class Countdown(
     val id: String,
@@ -40,6 +41,7 @@ data class Countdown(
     val notes: List<Note> = emptyList(),
     val cover: String? = null,
     val wallpaper: String? = null,
+    val wallpaperDim: Float? = null,
     val remind: Boolean = false,
     val priority: Int = 0,
     val archived: Boolean = false,
@@ -94,6 +96,7 @@ class DayRepository(context: Context) {
                 notes = parsedNotes,
                 cover = item.optString("cover").takeIf { it.isNotEmpty() },
                 wallpaper = item.optString("wallpaper").takeIf { it.isNotEmpty() },
+                wallpaperDim = item.optDouble("wallpaperDim").takeIf { !it.isNaN() }?.toFloat()?.coerceIn(0f, 0.85f),
                 remind = item.optBoolean("remind"),
                 priority = if (item.optBoolean("pinned")) 2 else item.optInt("priority", 0),
                 archived = item.optBoolean("archived"),
@@ -168,6 +171,7 @@ class DayRepository(context: Context) {
                     put("notes", notes)
                     day.cover?.let { put("cover", it) }
                     day.wallpaper?.let { put("wallpaper", it) }
+                    day.wallpaperDim?.let { put("wallpaperDim", it.toDouble()) }
                     put("remind", day.remind)
                     put("priority", day.priority)
                     put("pinned", day.priority == 2)

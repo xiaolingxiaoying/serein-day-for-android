@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色模式启动主题：纯黑窗口底 + 亮色状态栏图标，避免启动瞬间闪白（主题混合） -->
+    <style name="Theme.SereinDay" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:colorAccent">#C8F531</item>
+        <item name="android:windowBackground">#050506</item>
+    </style>
+</resources>
