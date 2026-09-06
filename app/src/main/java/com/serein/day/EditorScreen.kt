@@ -208,7 +208,10 @@ fun EditorScreen(
                             colors = SwitchDefaults.colors(checkedTrackColor = s.accent, checkedThumbColor = s.onAccent)
                         )
                     }
-                    val r = remainingDays(tempCountdown(date, lunar, repeatYearly))
+                    // 输入标题等引起的重组不重算；农历换算有缓存，这里也避免每次组合重复求值
+                    val r = remember(date, lunar, repeatYearly) {
+                        remainingDays(tempCountdown(date, lunar, repeatYearly))
+                    }
                     Text(
                         when {
                             repeatYearly && r >= 0 -> "每年重复 · 下次还有 $r 天"

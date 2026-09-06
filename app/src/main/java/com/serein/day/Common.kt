@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -75,15 +76,20 @@ import kotlin.math.roundToInt
 /** 数字等宽（tnum），大号天数在计时刷新时不会左右跳动。 */
 val TnumStyle = TextStyle(fontFeatureSettings = "tnum")
 
+@Volatile
+private var reducedMotionCache: Boolean? = null
+
+/** 无障碍「移除动画」开关查询（进程内缓存，改动后重启生效——该设置极少变化）。 */
+fun isReducedMotion(context: android.content.Context): Boolean =
+    reducedMotionCache ?: runCatching {
+        Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    }.getOrDefault(false).also { reducedMotionCache = it }
+
 /** 系统关闭了动画时长（无障碍「移除动画」）时返回 true，动效应降级为即时切换。 */
 @Composable
 fun rememberReducedMotion(): Boolean {
     val context = LocalContext.current
-    return remember {
-        runCatching {
-            Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
-        }.getOrDefault(false)
-    }
+    return remember { isReducedMotion(context) }
 }
 
 /**
@@ -484,7 +490,14 @@ private fun DrawScope.drawCalendarArt(sw: Float, stroke: Color, accent: Color) {
 /** 封面位图 Lru 内存缓存：列表滚动与页面往返不再反复解码（修复归档页首次打开卡顿）。 */
 private object CoverBitmapCache {
     private const val MAX_DIMEN = 720
-    private val cache = androidx.collection.LruCache<String, androidx.compose.ui.graphics.ImageBitmap>(24)
+    private const val KB = 1024
+    // 按位图字节计费，上限取堆的 1/8（6–32MB）：张数计费时大图会悄悄挤爆低内存设备
+    private val cache = object : androidx.collection.LruCache<String, androidx.compose.ui.graphics.ImageBitmap>(
+        (Runtime.getRuntime().maxMemory() / 8 / KB).toInt().coerceIn(6 * KB, 32 * KB)
+    ) {
+        override fun sizeOf(key: String, value: androidx.compose.ui.graphics.ImageBitmap): Int =
+            value.asAndroidBitmap().allocationByteCount / KB
+    }
 
     fun peek(name: String): androidx.compose.ui.graphics.ImageBitmap? = cache.get(name)
 

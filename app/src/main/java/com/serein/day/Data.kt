@@ -61,6 +61,11 @@ class DayRepository(context: Context) {
     private val prefs = context.getSharedPreferences("countdowns", Context.MODE_PRIVATE)
     private val settingsPrefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
+    // 单线程串行写：JSON 序列化整份列表放后台，避免每次改动都在主线程卡一下；按提交顺序后写覆盖先写
+    private val writeExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "serein-repo-write").apply { isDaemon = true }
+    }
+
     fun load(): List<Countdown> = runCatching {
         val array = JSONArray(prefs.getString("items", "[]"))
         val books = loadBooks().ifEmpty { defaultBooks() }
@@ -127,7 +132,10 @@ class DayRepository(context: Context) {
     }.getOrDefault(emptyList())
 
     fun save(days: List<Countdown>) {
-        prefs.edit().putString("items", toJson(days)).apply()
+        // 序列化与写入都在后台单线程完成；Countdown 均为不可变数据，跨线程读取安全
+        writeExecutor.execute {
+            prefs.edit().putString("items", toJson(days)).apply()
+        }
     }
 
     fun saveBooks(books: List<Book>) {
@@ -344,13 +352,26 @@ fun countdownComparator(today: LocalDate = LocalDate.now()): Comparator<Countdow
 
 /** 设置页可选的排序方式：按剩余天数 / 按目标日期 / 按添加时间；置顶始终最前。 */
 fun sortCountdowns(days: List<Countdown>, order: SortOrder, today: LocalDate = LocalDate.now()): List<Countdown> {
+    // 剩余天数（农历重复事件需历法换算）只在排序前算一次，避免比较器里 O(n log n) 次重算
+    val remainingById = HashMap<String, Long>(days.size * 2)
+    days.forEach { remainingById[it.id] = remainingDays(it, today) }
+    val targetById = if (order == SortOrder.BY_DATE) {
+        val map = HashMap<String, LocalDate>(days.size * 2)
+        days.forEach { map[it.id] = targetDate(it, today) }
+        map
+    } else null
+
     val pinnedFirst = compareByDescending<Countdown> { it.priority == 2 }
     val body: Comparator<Countdown> = when (order) {
-        SortOrder.BY_REMAINING -> compareBy { remainingDays(it, today) }
-        SortOrder.BY_DATE -> compareBy { targetDate(it, today) }
+        SortOrder.BY_REMAINING -> compareBy { remainingById[it.id] ?: 0L }
+        SortOrder.BY_DATE -> compareBy { targetById?.get(it.id) ?: it.date }
         SortOrder.BY_CREATED -> compareByDescending { it.createdAt ?: LocalDate.MIN }
     }
-    return days.sortedWith(pinnedFirst.thenByDescending { remainingDays(it, today) >= 0 }.then(body))
+    return days.sortedWith(
+        pinnedFirst
+            .thenByDescending { (remainingById[it.id] ?: 0L) >= 0 }
+            .then(body)
+    )
 }
 
 val Categories = listOf("旅行", "纪念日", "生日", "考试")

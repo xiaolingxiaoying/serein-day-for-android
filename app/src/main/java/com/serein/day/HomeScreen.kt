@@ -76,10 +76,12 @@ fun HomeTab(
     val hero = if (minimalMode) null else sorted.firstOrNull()
     val listDays = remember(sorted, hero) { sorted.filter { it.id != hero?.id } }
     val groups = remember(listDays) {
+        // 每条事件的剩余天数只算一次，供三组过滤共用
+        val remaining = listDays.associate { it.id to remainingDays(it) }
         listOf(
-            "今天" to listDays.filter { remainingDays(it) == 0L },
-            "未来" to listDays.filter { remainingDays(it) > 0 },
-            "已过去" to listDays.filter { remainingDays(it) < 0 }
+            "今天" to listDays.filter { remaining[it.id] == 0L },
+            "未来" to listDays.filter { (remaining[it.id] ?: 0L) > 0 },
+            "已过去" to listDays.filter { (remaining[it.id] ?: 0L) < 0 }
         ).filter { it.second.isNotEmpty() }
     }
     val bookCounts = remember(active) { active.groupingBy { it.bookId }.eachCount() }

@@ -19,6 +19,15 @@ android {
 
     buildFeatures { compose = true }
 
+    buildTypes {
+        release {
+            // R8 收缩 + 资源收缩：显著缩小 APK、加快冷启动（material-icons-extended 未收缩时体积巨大）
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

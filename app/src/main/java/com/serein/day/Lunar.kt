@@ -54,32 +54,48 @@ object LunarCalendar {
         cc.get(ChineseCalendar.EXTENDED_YEAR) - 2024
     }
 
+    // ICU ChineseCalendar 构造很重；列表行渲染与排序会高频换算同一批日期，进程内缓存换算结果。
+    private val fromSolarCache = androidx.collection.LruCache<Long, LunarDate>(512)
+    private val toSolarCache = androidx.collection.LruCache<Int, LocalDate>(256)
+
     private fun atUtc(date: LocalDate): Long = date.atTime(12, 0).toInstant(ZoneOffset.UTC).toEpochMilli()
 
     private fun newCalendar(): ChineseCalendar = ChineseCalendar(TimeZone.getTimeZone("UTC"))
 
     /** 公历 → 农历。 */
     fun fromSolar(solar: LocalDate): LunarDate {
+        val key = solar.toEpochDay()
+        fromSolarCache.get(key)?.let { return it }
         val cc = newCalendar()
         cc.timeInMillis = atUtc(solar)
-        return LunarDate(
+        val result = LunarDate(
             year = cc.get(ChineseCalendar.EXTENDED_YEAR) - extYearOffset,
             month = cc.get(ChineseCalendar.MONTH) + 1,
             isLeapMonth = cc.get(ChineseCalendar.IS_LEAP_MONTH) == 1,
             day = cc.get(ChineseCalendar.DAY_OF_MONTH)
         )
+        fromSolarCache.put(key, result)
+        return result
     }
 
     /** 农历 → 公历。 */
     fun toSolar(year: Int, month: Int, isLeapMonth: Boolean, day: Int): LocalDate {
+        val key = toSolarKey(year, month, isLeapMonth, day)
+        toSolarCache.get(key)?.let { return it }
         val cc = newCalendar()
         cc.clear()
         cc.set(ChineseCalendar.EXTENDED_YEAR, year + extYearOffset)
         cc.set(ChineseCalendar.MONTH, month - 1)
         cc.set(ChineseCalendar.IS_LEAP_MONTH, if (isLeapMonth) 1 else 0)
         cc.set(ChineseCalendar.DAY_OF_MONTH, day)
-        return Instant.ofEpochMilli(cc.timeInMillis).atZone(ZoneOffset.UTC).toLocalDate()
+        val result = Instant.ofEpochMilli(cc.timeInMillis).atZone(ZoneOffset.UTC).toLocalDate()
+        toSolarCache.put(key, result)
+        return result
     }
+
+    /** 打包 (year, month, 闰月标记, day) 为缓存键；month+闰位最多 24，day 最多 30。 */
+    private fun toSolarKey(year: Int, month: Int, isLeapMonth: Boolean, day: Int): Int =
+        ((year - 1900) shl 10) or ((month + (if (isLeapMonth) 12 else 0)) shl 5) or day
 
     /** 某农历年的闰月月份（1-12），无闰月返回 0。从正月初一逐日扫描，一年至多 ~390 次转换。 */
     fun leapMonthOf(year: Int): Int {

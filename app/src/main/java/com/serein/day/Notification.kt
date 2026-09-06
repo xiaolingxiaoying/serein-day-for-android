@@ -44,14 +44,16 @@ object PinnedNotification {
             manager.cancel(NOTIFICATION_ID)
             return
         }
+        val today = LocalDate.now()
         val active = days.filterNot { it.archived }
-        val pinned = active.filter { it.priority == 2 }.minByOrNull { remainingDays(it) } ?: active.minByOrNull { remainingDays(it) }
+        val pinned = active.filter { it.priority == 2 }.minByOrNull { remainingDays(it, today) }
+            ?: active.minByOrNull { remainingDays(it, today) }
         if (pinned == null) {
             manager.cancel(NOTIFICATION_ID)
             return
         }
         ensureChannel(context)
-        val remaining = remainingDays(pinned)
+        val remaining = remainingDays(pinned, today)
         val title = when {
             pinned.priority == 2 -> "📌 ${pinned.title}"
             else -> pinned.title
