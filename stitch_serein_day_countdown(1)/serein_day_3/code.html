@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,100..1000&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100%;margin:0;padding:0;background-color:#f3fcf4;}body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "on-tertiary": "#ffffff", "inverse-surface": "#2a322d", "primary-fixed-dim": "#83d6c2", "surface-container-low": "#edf6ee", "on-primary-fixed-variant": "#005144", "primary-fixed": "#9ff2de", "on-primary-container": "#95e8d4", "on-background": "#151d19", "tertiary-container": "#845400", "secondary": "#4c6359", "error": "#ba1a1a", "secondary-fixed": "#cfe8dc", "outline": "#6e7976", "on-secondary-fixed": "#091f18", "surface-container-highest": "#dce5dd", "on-secondary-container": "#50685d", "on-tertiary-fixed-variant": "#643f00", "primary-container": "#006b5b", "secondary-container": "#cce6d9", "error-container": "#ffdad6", "inverse-primary": "#83d6c2", "secondary-fixed-dim": "#b3ccc0", "on-tertiary-container": "#ffd198", "tertiary-fixed": "#ffddb6", "on-surface": "#151d19", "on-error-container": "#93000a", "on-primary": "#ffffff", "background": "#f3fcf4", "surface-tint": "#006b5b", "on-error": "#ffffff", "surface-container-lowest": "#ffffff", "on-secondary": "#ffffff", "tertiary": "#643f00", "on-primary-fixed": "#00201a", "on-secondary-fixed-variant": "#354b42", "inverse-on-surface": "#eaf3ec", "surface-dim": "#d3dcd5", "outline-variant": "#bec9c4", "surface-container": "#e7f0e9", "primary": "#005144", "surface-container-high": "#e1eae3", "surface-bright": "#f3fcf4", "surface-variant": "#dce5dd", "surface": "#f3fcf4", "tertiary-fixed-dim": "#fbba65", "on-tertiary-fixed": "#2a1800", "on-surface-variant": "#3e4946" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "spacing-xxs": "0.125rem", "spacing-xs": "0.25rem", "spacing-xxl": "3rem", "screen-margin-horizontal": "1rem", "spacing-sm": "0.5rem", "spacing-xl": "2rem", "connected-gap": "0.1875rem", "spacing-lg": "1.5rem", "card-padding": "1.25rem", "spacing-md": "1rem", "button-height": "3.5rem" }, fontFamily: { "title-sm": ["Roboto Flex"], "label-sm": ["Roboto Flex"], "display-sm": ["Roboto Flex"], "label-lg": ["Roboto Flex"], "display-lg": ["Roboto Flex"], "title-md": ["Roboto Flex"], "label-md": ["Roboto Flex"], "body-lg": ["Roboto Flex"], "body-sm": ["Roboto Flex"], "headline-sm": ["Roboto Flex"], "title-lg": ["Roboto Flex"], "headline-md": ["Roboto Flex"], "headline-lg": ["Roboto Flex"], "body-md": ["Roboto Flex"], "display-md": ["Roboto Flex"] }, fontSize: { "title-sm": ["14px", { lineHeight: "20px", letterSpacing: "0.1px", fontWeight: "600" }], "label-sm": ["11px", { lineHeight: "16px", letterSpacing: "0.5px", fontWeight: "600" }], "display-sm": ["36px", { lineHeight: "44px", letterSpacing: "0px", fontWeight: "400" }], "label-lg": ["14px", { lineHeight: "20px", letterSpacing: "0.1px", fontWeight: "600" }], "display-lg": ["57px", { lineHeight: "64px", letterSpacing: "-0.25px", fontWeight: "400" }], "title-md": ["16px", { lineHeight: "24px", letterSpacing: "0.15px", fontWeight: "600" }], "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.5px", fontWeight: "600" }], "body-lg": ["16px", { lineHeight: "24px", letterSpacing: "0.5px", fontWeight: "400" }], "body-sm": ["12px", { lineHeight: "16px", letterSpacing: "0.4px", fontWeight: "400" }], "headline-sm": ["24px", { lineHeight: "32px", letterSpacing: "0px", fontWeight: "500" }], "title-lg": ["22px", { lineHeight: "28px", letterSpacing: "0px", fontWeight: "600" }], "headline-md": ["28px", { lineHeight: "36px", letterSpacing: "0px", fontWeight: "500" }], "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "0px", fontWeight: "500" }], "body-md": ["14px", { lineHeight: "20px", letterSpacing: "0.25px", fontWeight: "400" }], "display-md": ["45px", { lineHeight: "52px", letterSpacing: "0px", fontWeight: "400" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head><body class="bg-surface text-on-surface flex flex-col min-h-screen relative selection:bg-primary-fixed"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-screen-margin-horizontal flex items-center justify-between"><div class="flex items-center gap-spacing-sm"><button aria-label="返回" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="font-title-lg text-title-lg text-on-surface tracking-tight truncate">Countdown Detail</h1></div><div class="flex items-center gap-spacing-xs"><button aria-label="更多操作" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[24px]">more_vert</span></button><div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-safe px-screen-margin-horizontal bg-surface"><div class="flex flex-col w-full pb-10 space-y-4">
+<!-- 核心大卡片与沉浸式封面 (M3 Tonal Card, 圆角 20dp) -->
+<div class="w-full rounded-[20px] bg-surface-container overflow-hidden shadow-sm flex flex-col relative transition-all duration-300">
+<!-- 氛围背景画幅与沉浸遮罩 -->
+<div class="relative w-full h-56 overflow-hidden">
+<div class="bg-cover bg-center w-full h-full transform scale-105 transition-transform duration-700 hover:scale-100" data-alt="Scenic road trip towards misty coastal mountains at golden hour with warm amber and soft violet haze, gentle film grain, minimalist, tranquil, inspiring graduation journey aesthetic" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBS2WTHjbqh4Jz833-HpOQzv1p_Wb2fGW-QmTcegME5ylDP_AD5ppM_YHbZeS-Vt80MPRLC1FSpJ6YjOtSZbZCVhsDVEjORkjUR5B1Lf1roBoEIkKyv8m_GlQjPzYh61RfiQRsj71W9-YCEWPUAG8-PgJBLmnwQyXznzTgEYxRLdr6RjGtI5hL-9bPd7ToJMo1NzrYPVhyU9NTEo7sRvnT5VG3hloXDHBV7F9fmKg1-eth2m8xyZf90Zg')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-surface-container/40 to-transparent"></div>
+<!-- 顶部浮层标签: 分类与置顶态 -->
+<div class="absolute top-4 left-4 right-4 flex items-center justify-between">
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md text-primary font-label-md text-label-md shadow-sm">
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">flight_takeoff</span>
+          毕业旅行
+        </span>
+<button aria-label="置顶标记" class="w-9 h-9 rounded-full bg-surface-container-lowest/90 backdrop-blur-md flex items-center justify-center text-primary active:scale-95 transition-transform shadow-sm" id="pin-badge">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">push_pin</span>
+</button>
+</div>
+<!-- 倒数大标题 -->
+<div class="absolute bottom-3 left-5 right-5">
+<p class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant/80">Countdown Milestone</p>
+<h2 class="font-headline-md text-headline-md text-on-surface font-semibold tracking-tight truncate">毕业旅行 · 环岛记</h2>
+</div>
+</div>
+<!-- 巨幅倒数核心数字与进度 -->
+<div class="p-5 pt-3 flex flex-col gap-4">
+<div class="flex items-baseline justify-between border-b-0">
+<div class="flex items-baseline gap-1.5">
+<span class="font-body-md text-body-md text-on-surface-variant">还有</span>
+<span class="font-display-lg text-display-lg font-bold tracking-tight text-primary-container leading-none">128</span>
+<span class="font-title-md text-title-md font-medium text-primary-container">天</span>
+</div>
+<div class="text-right">
+<span class="inline-flex items-center gap-1 text-on-surface font-title-sm text-title-sm">
+            2027.12.18
+          </span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">星期六 · 启程</p>
+</div>
+</div>
+<!-- M3 LinearProgressIndicator 进度条体系 -->
+<div class="flex flex-col gap-1.5 bg-surface-container-low p-3.5 rounded-xl">
+<div class="flex justify-between items-center text-on-surface-variant font-label-sm text-label-sm">
+<span>已过 72 天 (起始 2027.08.12)</span>
+<span class="font-semibold text-primary-container">36% 完成</span>
+</div>
+<div class="w-full h-2.5 bg-surface-container-highest rounded-full overflow-hidden relative">
+<div class="h-full bg-primary-container rounded-full transition-all duration-1000 ease-out" style="width: 36%;"></div>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant/70 font-label-sm text-label-sm pt-0.5">
+<span>夏末立项</span>
+<span>冬月之约</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 详细信息卡片组 (Connected List 视觉聚类) -->
+<div class="flex flex-col w-full space-y-[3px]">
+<!-- 条目 1: 提醒配置 -->
+<div class="flex items-center gap-3 p-4 bg-surface-container-low rounded-t-[28px] rounded-b-[8px] transition-colors">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center shrink-0 text-on-secondary-container">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">notifications_active</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-sm text-label-sm text-on-surface-variant">提醒状态</p>
+<p class="font-body-md text-body-md text-on-surface font-medium truncate">提前 7 天 09:00 与 当天即时提醒</p>
+</div>
+<span class="px-2.5 py-1 rounded-full bg-surface-container-highest text-on-secondary-container font-label-sm text-label-sm shrink-0">已设响铃</span>
+</div>
+<!-- 条目 2: 分类与标签 -->
+<div class="flex items-center gap-3 p-4 bg-surface-container-low rounded-[8px] transition-colors">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center shrink-0 text-on-secondary-fixed">
+<span class="material-symbols-outlined text-[22px]">sell</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-sm text-label-sm text-on-surface-variant">事件分类</p>
+<div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+<span class="px-2.5 py-0.5 rounded-lg bg-secondary-container text-on-secondary-container font-label-sm text-label-sm">旅行</span>
+<span class="px-2.5 py-0.5 rounded-lg bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-sm text-label-sm">纪念日</span>
+<span class="px-2.5 py-0.5 rounded-lg bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">青春留念</span>
+</div>
+</div>
+</div>
+<!-- 条目 3: 创建时间与天数推移 -->
+<div class="flex items-center gap-3 p-4 bg-surface-container-low rounded-[8px] transition-colors">
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center shrink-0 text-on-primary-fixed-variant">
+<span class="material-symbols-outlined text-[22px]">calendar_today</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-sm text-label-sm text-on-surface-variant">创建时间</p>
+<p class="font-body-md text-body-md text-on-surface font-medium">2027年08月12日 (创建已 72 天)</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40 text-[18px]">history</span>
+</div>
+<!-- 条目 4: 备注说明与同行人随记 -->
+<div class="flex flex-col gap-2 p-4 bg-surface-container-low rounded-b-[28px] rounded-t-[8px] transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0 text-on-surface-variant">
+<span class="material-symbols-outlined text-[22px]">sticky_note_2</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-sm text-label-sm text-on-surface-variant">心愿与备忘</p>
+<p class="font-title-sm text-title-sm text-on-surface">行前清单与注意事项</p>
+</div>
+</div>
+<div class="ml-13 pl-10 pr-2">
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+          和大学室友们的毕业环岛之行！去海角追日出，吹太平洋晚风。已订好往返机票与首批民宿，记得提前两个月兑换浮潜体验券与相机备用电池。
+        </p>
+</div>
+</div>
+</div>
+<!-- 精彩时光缩影与纪念相册微模块 (提升信息密度与设计沉浸感) -->
+<div class="flex flex-col gap-2.5 pt-2">
+<div class="flex items-center justify-between px-1">
+<h3 class="font-title-md text-title-md text-on-surface">旅行灵感集 (3)</h3>
+<button class="font-label-md text-label-md text-primary-container flex items-center gap-0.5 active:opacity-75">
+<span>添加灵感</span>
+<span class="material-symbols-outlined text-[16px]">add</span>
+</button>
+</div>
+<div class="grid grid-cols-3 gap-2.5">
+<div class="relative h-24 rounded-2xl overflow-hidden bg-surface-container-highest shadow-sm">
+<div class="w-full h-full bg-cover bg-center" data-alt="Sunlit tropical coastal highway beside deep turquoise ocean waters, nostalgic summer tint, film camera vibe" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCfr6OpyofnYl7yYxOFY1aVi4jb_STKO7tJXxXVLkmworhxsD8ugwnaySupC2_iqkq5--yi9FS1aFxnYmaAgQ71MjZJ-KwumsilwMz639T1156WhwbBxqXukHAc_e7j2S-H8f68sNVwObcgoWSmK-u3E7cNMPXZgH_TVgmo22IY0Tdtzy6SANnKzVYFq-S8Y5sktXCN4zJAjru_HRNXkn5pZq0LJxzZBPhylDdaYd67JNa9ICRh6BXZrQ')"></div>
+<span class="absolute bottom-1.5 left-1.5 right-1.5 text-center text-on-primary bg-inverse-surface/60 backdrop-blur-sm rounded-md font-label-sm text-label-sm py-0.5">路线</span>
+</div>
+<div class="relative h-24 rounded-2xl overflow-hidden bg-surface-container-highest shadow-sm">
+<div class="w-full h-full bg-cover bg-center" data-alt="Cozy seaside wooden guesthouse room with billowing white curtains and warm sun flares" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB5O-q4MUNvQMMbfKm7nQGYwe48uaL-tfY5j2rc0Jb35YHNRGoZm4X1w4BkKRCeVxS-JD4ZkRWXh_H7VfMjslCuLLqnLB027Q7IpAr9AxNzUTfC5opNl0Jdt97Zqehi2ZP8znrP89Yo40uYylEVT5w40NhTFrOQyrgMlSivSfdDB5Lnra24ID1NNe28v90Cb2HgRyDWi6JRAsltYAelmv5HwKOM4sDtS-yKCMomQyak5mqPud4WKO1phw')"></div>
+<span class="absolute bottom-1.5 left-1.5 right-1.5 text-center text-on-primary bg-inverse-surface/60 backdrop-blur-sm rounded-md font-label-sm text-label-sm py-0.5">民宿</span>
+</div>
+<div class="relative h-24 rounded-2xl overflow-hidden bg-surface-container-highest shadow-sm flex flex-col items-center justify-center p-2 text-center bg-surface-container">
+<span class="material-symbols-outlined text-primary-container text-[28px] mb-1">map</span>
+<span class="font-label-sm text-label-sm text-on-surface font-medium">环岛路书</span>
+</div>
+</div>
+</div>
+<!-- 操作按钮组 -->
+<div class="pt-4 flex flex-col gap-3">
+<!-- 主操作按钮: M3 胶囊型 Filled Button -->
+<button class="w-full h-14 rounded-full bg-primary-container text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-transform" id="btn-edit-event">
+<span class="material-symbols-outlined text-[22px]">edit</span>
+<span>编辑此倒数事件</span>
+</button>
+<!-- 辅助操作行: Tonal 按钮并排 -->
+<div class="grid grid-cols-2 gap-3">
+<button class="h-12 rounded-full bg-secondary-container text-on-secondary-container font-label-lg text-label-lg flex items-center justify-center gap-2 active:bg-secondary-fixed transition-colors" id="btn-share-card">
+<span class="material-symbols-outlined text-[20px]">share</span>
+<span>分享卡片</span>
+</button>
+<button class="h-12 rounded-full bg-surface-container-high text-on-surface font-label-lg text-label-lg flex items-center justify-center gap-2 active:bg-surface-container-highest transition-colors" id="btn-archive-event">
+<span class="material-symbols-outlined text-[20px]">archive</span>
+<span>封存记录</span>
+</button>
+</div>
+</div>
+</div>
+<!-- 浮动更多操作轻量底板 (点击顶部更多时调起互动模拟) -->
+<div class="fixed inset-0 z-50 bg-inverse-surface/30 backdrop-blur-sm hidden items-end justify-center transition-opacity opacity-0" id="action-sheet">
+<div class="w-full max-w-md bg-surface-container-high rounded-t-[28px] p-5 pb-safe flex flex-col gap-3 shadow-2xl transform translate-y-full transition-transform duration-300">
+<div class="w-10 h-1 bg-outline-variant rounded-full mx-auto mb-1"></div>
+<div class="flex items-center justify-between pb-2">
+<h4 class="font-title-md text-title-md text-on-surface font-semibold">事件快捷操作</h4>
+<button class="p-1 rounded-full text-on-surface-variant hover:bg-surface-container-highest" id="close-sheet">
+<span class="material-symbols-outlined text-[22px]">close</span>
+</button>
+</div>
+<div class="flex flex-col space-y-[3px]">
+<button class="flex items-center gap-3.5 p-3.5 bg-surface-container-lowest rounded-t-[20px] rounded-b-[6px] text-left text-on-surface active:bg-surface-container">
+<span class="material-symbols-outlined text-primary-container text-[22px]">push_pin</span>
+<div class="flex-1 min-w-0">
+<p class="font-label-lg text-label-lg">设为顶置卡片</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">在桌面与应用首屏始终优先展示</p>
+</div>
+</button>
+<button class="flex items-center gap-3.5 p-3.5 bg-surface-container-lowest rounded-[6px] text-left text-on-surface active:bg-surface-container">
+<span class="material-symbols-outlined text-secondary text-[22px]">widgets</span>
+<div class="flex-1 min-w-0">
+<p class="font-label-lg text-label-lg">添加到桌面微件</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">生成 2x2 或 4x2 动态倒数时钟</p>
+</div>
+</button>
+<button class="flex items-center gap-3.5 p-3.5 bg-surface-container-lowest rounded-b-[20px] rounded-t-[6px] text-left text-error active:bg-error-container/30">
+<span class="material-symbols-outlined text-error text-[22px]">delete</span>
+<div class="flex-1 min-w-0">
+<p class="font-label-lg text-label-lg">删除事件</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">将移除此事件，不可恢复</p>
+</div>
+</button>
+</div>
+</div>
+</div>
+<script>
+  (function() {
+    // 交互微动画与轻触状态
+    const editBtn = document.getElementById('btn-edit-event');
+    const shareBtn = document.getElementById('btn-share-card');
+    const archiveBtn = document.getElementById('btn-archive-event');
+    const pinBadge = document.getElementById('pin-badge');
+    const sheet = document.getElementById('action-sheet');
+    const closeSheetBtn = document.getElementById('close-sheet');
+
+    // 绑定外层 App Bar 中的 more_vert 按钮以打开操作表
+    const headerMoreBtn = document.querySelector('header button[aria-label="更多操作"]');
+    if (headerMoreBtn) {
+      headerMoreBtn.addEventListener('click', () => {
+        sheet.classList.remove('hidden');
+        sheet.classList.add('flex');
+        setTimeout(() => {
+          sheet.classList.remove('opacity-0');
+          sheet.firstElementChild.classList.remove('translate-y-full');
+        }, 10);
+      });
+    }
+
+    function dismissSheet() {
+      sheet.classList.add('opacity-0');
+      sheet.firstElementChild.classList.add('translate-y-full');
+      setTimeout(() => {
+        sheet.classList.add('hidden');
+        sheet.classList.remove('flex');
+      }, 300);
+    }
+
+    if (closeSheetBtn) closeSheetBtn.addEventListener('click', dismissSheet);
+    sheet.addEventListener('click', (e) => {
+      if (e.target === sheet) dismissSheet();
+    });
+
+    if (editBtn) {
+      editBtn.addEventListener('click', () => {
+        editBtn.classList.add('scale-95');
+        setTimeout(() => editBtn.classList.remove('scale-95'), 150);
+      });
+    }
+
+    if (pinBadge) {
+      pinBadge.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const icon = pinBadge.querySelector('span');
+        const isPinned = icon.style.fontVariationSettings.includes("'FILL' 1");
+        icon.style.fontVariationSettings = isPinned ? "'FILL' 0" : "'FILL' 1";
+      });
+    }
+
+    if (shareBtn) {
+      shareBtn.addEventListener('click', () => {
+        shareBtn.classList.add('opacity-70');
+        setTimeout(() => shareBtn.classList.remove('opacity-70'), 200);
+      });
+    }
+
+    if (archiveBtn) {
+      archiveBtn.addEventListener('click', () => {
+        archiveBtn.classList.add('opacity-70');
+        setTimeout(() => archiveBtn.classList.remove('opacity-70'), 200);
+      });
+    }
+  })();
+</script></main></body></html>

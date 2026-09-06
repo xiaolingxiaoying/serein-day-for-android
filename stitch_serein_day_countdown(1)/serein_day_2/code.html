@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,100..1000&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100%;margin:0;padding:0;background-color:#f3fcf4;}body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "on-tertiary": "#ffffff",
+        "inverse-surface": "#2a322d",
+        "primary-fixed-dim": "#83d6c2",
+        "surface-container-low": "#edf6ee",
+        "on-primary-fixed-variant": "#005144",
+        "primary-fixed": "#9ff2de",
+        "on-primary-container": "#95e8d4",
+        "on-background": "#151d19",
+        "tertiary-container": "#845400",
+        "secondary": "#4c6359",
+        "error": "#ba1a1a",
+        "secondary-fixed": "#cfe8dc",
+        "outline": "#6e7976",
+        "on-secondary-fixed": "#091f18",
+        "surface-container-highest": "#dce5dd",
+        "on-secondary-container": "#50685d",
+        "on-tertiary-fixed-variant": "#643f00",
+        "primary-container": "#006b5b",
+        "secondary-container": "#cce6d9",
+        "error-container": "#ffdad6",
+        "inverse-primary": "#83d6c2",
+        "secondary-fixed-dim": "#b3ccc0",
+        "on-tertiary-container": "#ffd198",
+        "tertiary-fixed": "#ffddb6",
+        "on-surface": "#151d19",
+        "on-error-container": "#93000a",
+        "on-primary": "#ffffff",
+        "background": "#f3fcf4",
+        "surface-tint": "#006b5b",
+        "on-error": "#ffffff",
+        "surface-container-lowest": "#ffffff",
+        "on-secondary": "#ffffff",
+        "tertiary": "#643f00",
+        "on-primary-fixed": "#00201a",
+        "on-secondary-fixed-variant": "#354b42",
+        "inverse-on-surface": "#eaf3ec",
+        "surface-dim": "#d3dcd5",
+        "outline-variant": "#bec9c4",
+        "surface-container": "#e7f0e9",
+        "primary": "#005144",
+        "surface-container-high": "#e1eae3",
+        "surface-bright": "#f3fcf4",
+        "surface-variant": "#dce5dd",
+        "surface": "#f3fcf4",
+        "tertiary-fixed-dim": "#fbba65",
+        "on-tertiary-fixed": "#2a1800",
+        "on-surface-variant": "#3e4946"
+      },
+      borderRadius: {
+        "DEFAULT": "0.25rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
+        "full": "9999px"
+      },
+      spacing: {
+        "spacing-xxs": "0.125rem",
+        "spacing-xs": "0.25rem",
+        "spacing-xxl": "3rem",
+        "screen-margin-horizontal": "1rem",
+        "spacing-sm": "0.5rem",
+        "spacing-xl": "2rem",
+        "connected-gap": "0.1875rem",
+        "spacing-lg": "1.5rem",
+        "card-padding": "1.25rem",
+        "spacing-md": "1rem",
+        "button-height": "3.5rem"
+      },
+      fontFamily: {
+        "title-sm": ["Roboto Flex"],
+        "label-sm": ["Roboto Flex"],
+        "display-sm": ["Roboto Flex"],
+        "label-lg": ["Roboto Flex"],
+        "display-lg": ["Roboto Flex"],
+        "title-md": ["Roboto Flex"],
+        "label-md": ["Roboto Flex"],
+        "body-lg": ["Roboto Flex"],
+        "body-sm": ["Roboto Flex"],
+        "headline-sm": ["Roboto Flex"],
+        "title-lg": ["Roboto Flex"],
+        "headline-md": ["Roboto Flex"],
+        "headline-lg": ["Roboto Flex"],
+        "body-md": ["Roboto Flex"],
+        "display-md": ["Roboto Flex"]
+      },
+      fontSize: {
+        "title-sm": ["14px", { lineHeight: "20px", letterSpacing: "0.1px", fontWeight: "600" }],
+        "label-sm": ["11px", { lineHeight: "16px", letterSpacing: "0.5px", fontWeight: "600" }],
+        "display-sm": ["36px", { lineHeight: "44px", letterSpacing: "0px", fontWeight: "400" }],
+        "label-lg": ["14px", { lineHeight: "20px", letterSpacing: "0.1px", fontWeight: "600" }],
+        "display-lg": ["57px", { lineHeight: "64px", letterSpacing: "-0.25px", fontWeight: "400" }],
+        "title-md": ["16px", { lineHeight: "24px", letterSpacing: "0.15px", fontWeight: "600" }],
+        "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.5px", fontWeight: "600" }],
+        "body-lg": ["16px", { lineHeight: "24px", letterSpacing: "0.5px", fontWeight: "400" }],
+        "body-sm": ["12px", { lineHeight: "16px", letterSpacing: "0.4px", fontWeight: "400" }],
+        "headline-sm": ["24px", { lineHeight: "32px", letterSpacing: "0px", fontWeight: "500" }],
+        "title-lg": ["22px", { lineHeight: "28px", letterSpacing: "0px", fontWeight: "600" }],
+        "headline-md": ["28px", { lineHeight: "36px", letterSpacing: "0px", fontWeight: "500" }],
+        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "0px", fontWeight: "500" }],
+        "body-md": ["14px", { lineHeight: "20px", letterSpacing: "0.25px", fontWeight: "400" }],
+        "display-md": ["45px", { lineHeight: "52px", letterSpacing: "0px", fontWeight: "400" }]
+      }
+    }
+  }
+};</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head><body class="bg-surface text-on-surface flex flex-col min-h-screen relative selection:bg-primary-fixed"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,51,35,0.05)] border-b border-surface-container"><div class="h-16 px-screen-margin-horizontal flex items-center justify-between"><div class="flex items-center gap-spacing-sm"><button aria-label="打开菜单" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[24px]">menu</span></button><h1 class="font-title-lg text-title-lg text-on-surface tracking-tight truncate">Home</h1></div><div class="flex items-center gap-spacing-xs"><button aria-label="拍照记录" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[24px]">photo_camera</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-28 px-screen-margin-horizontal bg-surface"><div class="flex flex-col w-full pb-8 select-none">
+<!-- Dynamic Filter / Mood Bar -->
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+<button class="flex items-center gap-1.5 h-8 px-3.5 rounded-lg bg-secondary-container text-on-secondary-fixed transition-all active:scale-95 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">check</span>
+<span class="font-label-md text-label-md">全部纪念</span>
+</button>
+<button class="flex items-center gap-1.5 h-8 px-3.5 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-95">
+<span class="font-label-md text-label-md">旅行</span>
+</button>
+<button class="flex items-center gap-1.5 h-8 px-3.5 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-95">
+<span class="font-label-md text-label-md">亲友生日</span>
+</button>
+<button class="flex items-center gap-1.5 h-8 px-3.5 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-95">
+<span class="font-label-md text-label-md">生活仪式</span>
+</button>
+</div>
+<div class="flex items-center pl-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+</div>
+</div>
+<!-- Hero Milestone Card: Tokyo Winter Journey -->
+<section class="w-full mb-6">
+<div class="group relative overflow-hidden rounded-[20px] bg-surface-container p-4 shadow-sm hover:shadow-md transition-all duration-300 active:scale-[0.985] cursor-pointer flex flex-col" data-path="countdown-detail" id="hero-milestone-card">
+<!-- Cover Illustration with Gradient & Badge -->
+<div class="relative w-full h-44 rounded-2xl overflow-hidden bg-primary-container">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="Quiet romantic winter scene in Tokyo, pastel lilac and soft violet snowfall, faint silhouettes of Mount Fuji and Tokyo Tower, elegant minimal watercolor aesthetic, calm cinematic twilight light, warm glowing lanterns" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB0lLWIm1KeDzP2_4_Ro5b1YJaqNYQ5gz4YsRzhK15rCTmcD4qKYfBJxlf26BXuwypcgQK6M7YtDnfKPBwSyTE-lGCCZkE-gh0H2H266CQdUynEcfj-IMz8Y96OPn0P6yTb2rn1FcaiiIVOkt-lvZvMrCGLnh0xGHMUe2Zz-eYpyAg8UQI7hpuz2iCjImMbFEOcC7Adjl83zQu3r0bJ6hODlXSO3faQhBeYYMDzRMgHXijT6rc5xA0SBA')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-surface-container/20 to-transparent"></div>
+<!-- Category Chip Badge -->
+<div class="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">travel_explore</span>
+<span class="font-label-sm text-label-sm text-primary font-semibold">特别期待</span>
+</div>
+<!-- Top Right Visual Tag -->
+<div class="absolute top-3 right-3 flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-lowest/80 backdrop-blur-md text-on-surface">
+<span class="material-symbols-outlined text-[18px]">push_pin</span>
+</div>
+<!-- Warm Note In-image Tag -->
+<div class="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-inverse-surface/75 backdrop-blur-md text-inverse-on-surface">
+<span class="material-symbols-outlined text-[14px]">file_upload_off</span>
+<span class="font-label-sm text-label-sm">初雪与银座漫步清单</span>
+</div>
+</div>
+<!-- Core Milestone Content -->
+<div class="flex flex-col pt-4">
+<div class="flex items-baseline justify-between">
+<h2 class="font-title-lg text-title-lg text-on-surface tracking-tight font-semibold">东京 · 冬日旅程</h2>
+<span class="font-label-md text-label-md text-primary font-semibold px-2 py-0.5 rounded-full bg-primary-fixed">还有</span>
+</div>
+<!-- Giant Headline Number with Progress Metaphor -->
+<div class="flex items-end justify-between my-2">
+<div class="flex items-baseline gap-1.5">
+<span class="font-display-lg text-display-lg font-normal tracking-tight text-primary leading-none">128</span>
+<span class="font-title-md text-title-md font-medium text-on-surface-variant">天</span>
+</div>
+<!-- Compact SVG Circular Progress -->
+<div class="relative flex items-center justify-center w-12 h-12">
+<svg class="w-12 h-12 -rotate-90" viewbox="0 0 48 48">
+<circle class="text-surface-container-high fill-none" cx="24" cy="24" r="20" stroke="currentColor" stroke-width="4"></circle>
+<circle class="text-primary fill-none transition-all duration-1000" cx="24" cy="24" r="20" stroke="currentColor" stroke-dasharray="125.6" stroke-dashoffset="45" stroke-linecap="round" stroke-width="4"></circle>
+</svg>
+<span class="absolute font-label-sm text-label-sm text-on-surface-variant font-medium">64%</span>
+</div>
+</div>
+<!-- Meta Subtitle & Progress Note -->
+<div class="flex items-center justify-between text-on-surface-variant pt-1 border-none">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">calendar_today</span>
+<p class="font-body-md text-body-md">距 2027.12.18 · 星期六</p>
+</div>
+<div class="flex items-center gap-1 text-primary group-hover:translate-x-0.5 transition-transform">
+<span class="font-label-md text-label-md font-semibold">查看详情</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section Divider / Header -->
+<div class="flex items-center justify-between px-1 mb-2.5">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-3.5 rounded-full bg-primary"></span>
+<h3 class="font-title-md text-title-md text-on-surface font-semibold">日程时光</h3>
+</div>
+<span class="font-label-sm text-label-sm text-outline">共 3 个节点</span>
+</div>
+<!-- Connected Milestone List (M3 Connected Rhythm: 3dp gap, 28dp outer, 8dp inner) -->
+<div class="flex flex-col gap-[3px] w-full mb-6">
+<!-- Item 1: Upcoming Event -->
+<div class="flex items-center justify-between p-4 bg-secondary-container text-on-secondary-fixed rounded-t-[28px] rounded-b-[8px] cursor-pointer hover:bg-secondary-fixed transition-all duration-200 active:scale-[0.99]" data-path="countdown-detail">
+<div class="flex items-center gap-3.5 min-w-0">
+<div class="w-10 h-10 rounded-full bg-surface-container-lowest/90 flex items-center justify-center flex-shrink-0 text-primary shadow-sm">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">event</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-title-md text-title-md font-semibold truncate text-on-surface">即将到来</span>
+<span class="px-2 py-0.2 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm">近期待办</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-secondary-fixed-variant truncate mt-0.5">1 个重要日子将在 30 天内发生</p>
+</div>
+</div>
+<div class="flex items-center pl-2 flex-shrink-0">
+<span class="material-symbols-outlined text-[22px] text-on-secondary-fixed-variant">chevron_right</span>
+</div>
+</div>
+<!-- Item 2: Mother's Birthday -->
+<div class="flex items-center justify-between p-4 bg-tertiary-container text-on-tertiary rounded-t-[8px] rounded-b-[28px] cursor-pointer hover:bg-tertiary transition-all duration-200 active:scale-[0.99]" data-path="countdown-detail">
+<div class="flex items-center gap-3.5 min-w-0">
+<div class="w-10 h-10 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center flex-shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-title-md text-title-md font-semibold truncate text-white">妈妈生日</span>
+<span class="px-2 py-0.2 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-semibold">生日周年</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-tertiary-container truncate mt-0.5">还有 344 天 · 2027年8月15日</p>
+</div>
+</div>
+<div class="flex items-center pl-2 flex-shrink-0">
+<span class="material-symbols-outlined text-[22px] text-white/80">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Warm Quotes / Daily Mindfulness Card -->
+<div class="w-full p-4 rounded-2xl bg-surface-container-low flex items-start gap-3 border border-surface-container">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center flex-shrink-0 text-primary">
+<span class="material-symbols-outlined text-[18px]">wb_sunny</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-title-sm text-title-sm text-on-surface font-semibold">日辰心绪</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 leading-relaxed">
+        “把期待写在日历的扉页上，每天醒来，便离心中的远方近了一步。”
+      </p>
+</div>
+</div>
+<!-- Extended Interactive FAB Anchor (Trigger Micro-interaction) -->
+<div class="fixed right-4 bottom-24 z-40">
+<button aria-label="新增倒数日" class="group relative w-14 h-14 rounded-2xl bg-primary-container text-on-primary flex items-center justify-center shadow-[0px_4px_16px_rgba(0,107,91,0.3)] transition-all duration-300 hover:scale-105 active:scale-95 active:rotate-12" data-path="add-countdown" id="custom-fab">
+<span class="material-symbols-outlined text-[28px] transition-transform duration-300 group-hover:rotate-90">edit</span>
+<span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-tertiary-fixed-dim border-none animate-pulse"></span>
+</button>
+</div>
+</div>
+<script>
+  (function() {
+    // Interactive card routing and ripple feedback simulation
+    const interactiveElements = document.querySelectorAll('[data-path]');
+    interactiveElements.forEach(el => {
+      el.addEventListener('click', function(e) {
+        const target = this.getAttribute('data-path');
+        if (!target) return;
+        
+        // Haptic-like visual response
+        this.classList.add('opacity-80');
+        setTimeout(() => {
+          this.classList.remove('opacity-80');
+        }, 150);
+      });
+    });
+
+    // Custom FAB smooth hover and click expansion micro-animation
+    const fab = document.getElementById('custom-fab');
+    if (fab) {
+      fab.addEventListener('click', (e) => {
+        fab.style.transform = 'translateY(-6px) scale(0.96)';
+        setTimeout(() => {
+          fab.style.transform = '';
+        }, 220);
+      });
+    }
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container-low/95 backdrop-blur-xl shadow-[0_-2px_12px_rgba(0,51,35,0.06)] border-t border-surface-container" data-active-classes="[&amp;_.indicator]:bg-secondary-container text-on-surface font-semibold [&amp;_.material-symbols-outlined]:text-primary"><div class="flex justify-around items-center h-20 px-spacing-sm"><a aria-current="page" class="flex flex-col items-center justify-center flex-1 py-spacing-xs transition-all [&amp;_.indicator]:bg-secondary-container text-on-surface font-semibold [&amp;_.material-symbols-outlined]:text-primary" data-path="home" href="#"><div class="indicator px-5 py-1 rounded-full transition-all duration-300 flex items-center justify-center"><span class="material-symbols-outlined text-[24px]">home</span></div><span class="font-label-sm text-label-sm mt-spacing-xxs">首页</span></a><a class="flex flex-col items-center justify-center flex-1 py-spacing-xs text-on-surface-variant transition-all" data-path="archive" href="#"><div class="indicator px-5 py-1 rounded-full transition-all duration-300 flex items-center justify-center"><span class="material-symbols-outlined text-[24px]">archive</span></div><span class="font-label-sm text-label-sm mt-spacing-xxs">归档</span></a><a class="flex flex-col items-center justify-center flex-1 py-spacing-xs text-on-surface-variant transition-all" data-path="settings" href="#"><div class="indicator px-5 py-1 rounded-full transition-all duration-300 flex items-center justify-center"><span class="material-symbols-outlined text-[24px]">settings</span></div><span class="font-label-sm text-label-sm mt-spacing-xxs">设置</span></a></div></nav></body></html>

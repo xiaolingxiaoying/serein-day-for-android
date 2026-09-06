@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,100..1000&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100%;margin:0;padding:0;background-color:#fef7ff;}body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "on-tertiary": "#ffffff", "on-primary": "#ffffff", "inverse-on-surface": "#f6eefa", "primary-fixed-dim": "#cfbcff", "tertiary-fixed": "#ffd9e3", "on-secondary-container": "#686177", "tertiary": "#633b48", "surface-container-highest": "#e7e0eb", "on-surface": "#1d1a22", "surface-variant": "#e7e0eb", "primary": "#4f378a", "outline": "#7a7582", "error-container": "#ffdad6", "outline-variant": "#cbc4d2", "surface-container": "#f3ebf7", "surface-container-low": "#f9f1fd", "on-primary-fixed": "#22005d", "surface-bright": "#fef7ff", "surface-tint": "#6750a4", "on-secondary": "#ffffff", "surface-dim": "dfd7e3", "on-tertiary-container": "#ffcbda", "surface-container-lowest": "#ffffff", "on-tertiary-fixed-variant": "#633b48", "on-secondary-fixed": "#1e192b", "error": "#ba1a1a", "on-surface-variant": "#494551", "secondary-fixed": "#e8def9", "tertiary-fixed-dim": "#eeb8c8", "secondary-container": "#e8def9", "on-error": "#ffffff", "on-background": "#1d1a22", "tertiary-container": "#7d5260", "primary-container": "#6750a4", "on-error-container": "#93000a", "secondary": "#625b71", "inverse-primary": "#cfbcff", "on-tertiary-fixed": "#31111d", "on-secondary-fixed-variant": "#4a4358", "inverse-surface": "#322f37", "surface-container-high": "#ede6f1", "on-primary-container": "#e0d2ff", "secondary-fixed-dim": "#ccc2dc", "on-primary-fixed-variant": "#4f378a", "primary-fixed": "#e9ddff", "background": "#fef7ff", "surface": "#fef7ff" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "spacing-xxs": "0.125rem", "spacing-xs": "0.25rem", "spacing-xxl": "3rem", "screen-margin-horizontal": "1rem", "spacing-sm": "0.5rem", "spacing-xl": "2rem", "connected-gap": "0.1875rem", "spacing-lg": "1.5rem", "card-padding": "1.25rem", "spacing-md": "1rem", "button-height": "3.5rem" }, fontFamily: { "title-sm": ["Roboto Flex"], "label-sm": ["Roboto Flex"], "display-sm": ["Roboto Flex"], "label-lg": ["Roboto Flex"], "display-lg": ["Roboto Flex"], "title-md": ["Roboto Flex"], "label-md": ["Roboto Flex"], "body-lg": ["Roboto Flex"], "body-sm": ["Roboto Flex"], "headline-sm": ["Roboto Flex"], "title-lg": ["Roboto Flex"], "headline-md": ["Roboto Flex"], "headline-lg": ["Roboto Flex"], "body-md": ["Roboto Flex"], "display-md": ["Roboto Flex"] }, fontSize: { "title-sm": ["14px", { lineHeight: "20px", letterSpacing: "0.1px", fontWeight: "600" }], "label-sm": ["11px", { lineHeight: "16px", letterSpacing: "0.5px", fontWeight: "600" }], "display-sm": ["36px", { lineHeight: "44px", letterSpacing: "0px", fontWeight: "400" }], "label-lg": ["14px", { lineHeight: "20px", letterSpacing: "0.1px", fontWeight: "600" }], "display-lg": ["57px", { lineHeight: "64px", letterSpacing: "-0.25px", fontWeight: "400" }], "title-md": ["16px", { lineHeight: "24px", letterSpacing: "0.15px", fontWeight: "600" }], "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.5px", fontWeight: "600" }], "body-lg": ["16px", { lineHeight: "24px", letterSpacing: "0.5px", fontWeight: "400" }], "body-sm": ["12px", { lineHeight: "16px", letterSpacing: "0.4px", fontWeight: "400" }], "headline-sm": ["24px", { lineHeight: "32px", letterSpacing: "0px", fontWeight: "500" }], "title-lg": ["22px", { lineHeight: "28px", letterSpacing: "0px", fontWeight: "600" }], "headline-md": ["28px", { lineHeight: "36px", letterSpacing: "0px", fontWeight: "500" }], "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "0px", fontWeight: "500" }], "body-md": ["14px", { lineHeight: "20px", letterSpacing: "0.25px", fontWeight: "400" }], "display-md": ["45px", { lineHeight: "52px", letterSpacing: "0px", fontWeight: "400" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface flex flex-col min-h-screen relative selection:bg-primary-fixed"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-screen-margin-horizontal flex items-center justify-between"><div class="flex items-center gap-spacing-sm"><button aria-label="返回" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="font-title-lg text-title-lg text-on-surface tracking-tight truncate">Add Countdown</h1></div><div class="flex items-center gap-spacing-xs"><button aria-label="更多操作" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[24px]">more_vert</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-safe px-screen-margin-horizontal bg-surface"><div class="flex flex-col w-full pb-spacing-xl">
+<!-- Live Preview Milestone Hero Card (M3 Elevated/Tonal Card) -->
+<section class="w-full mb-spacing-md">
+<div class="relative w-full rounded-[20px] overflow-hidden bg-surface-container shadow-md">
+<!-- Visual Background with Atmospheric Wash -->
+<div class="h-36 w-full bg-cover bg-center relative" data-alt="A tranquil atmospheric dawn landscape with soft lavender, lilac and gentle golden hues across distant mountain silhouettes, cinematic soft lighting, Material Design serene mood, clean minimalist photography, pastel tones matching #4f378a and #f3ebf7" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDyaBo_vWo7hAyeYmGiOGu5V5SoHRGJvoXQwPyC2acIq_fYysrpcJes3QCnt2gh2pBKIigqHMuyq6z5GtqRw1KIZ_sNO4WBWHZCWnVBJibFDLMrniOS1izT895an4A5qYr9CvZd_rPJ1iOZIoB2YBZI_VRTjN-cdHoYgaswDUZL7jso0OoyP1DIbfMsAcLvZnVZcgjNdc-w83wWBKf0igJe_koWpterEZvxLMg-113JUWd1FUmV7SYFmA')">
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-surface-container/40 to-transparent"></div>
+<div class="absolute top-3 right-3 bg-surface-container-lowest/80 backdrop-blur-md px-spacing-sm py-1 rounded-full flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[14px] text-primary" style="font-variation-settings: 'FILL' 1;">visibility</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">实时卡片预览</span>
+</div>
+</div>
+<!-- Preview Milestone Content -->
+<div class="px-card-padding pb-spacing-md pt-spacing-xs flex items-end justify-between relative">
+<div class="flex flex-col min-w-0 pr-spacing-sm">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-secondary-container text-on-secondary-container font-label-sm text-label-sm w-fit mb-1.5" id="previewTag">
+<span class="material-symbols-outlined text-[13px]">stars</span>
+            重要纪念
+          </span>
+<h2 class="font-title-lg text-title-lg text-on-surface truncate" id="previewTitle">毕业旅行</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 flex items-center gap-1" id="previewDate">
+<span class="material-symbols-outlined text-[14px] text-outline">event</span>
+            目标日：2027年12月18日
+          </p>
+</div>
+<div class="flex flex-col items-end flex-shrink-0 bg-primary-container/15 px-3 py-2 rounded-2xl">
+<span class="font-label-sm text-label-sm text-on-surface-variant">还有</span>
+<div class="flex items-baseline gap-1">
+<span class="font-display-sm text-display-sm text-primary tabular-nums" id="previewDays">128</span>
+<span class="font-label-sm text-label-sm text-primary font-bold">天</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Vertical Form Container (Defensive Flow layout, strictly avoiding overlaps) -->
+<form class="flex flex-col gap-spacing-md w-full" id="countdownForm" onsubmit="return false;">
+<!-- Input Field 1: Event Name -->
+<div class="flex flex-col w-full">
+<div class="relative w-full h-[56px] rounded-[16px] bg-surface-container-lowest shadow-sm flex items-center px-4 transition-all focus-within:bg-surface-container-low">
+<span class="material-symbols-outlined text-outline text-[22px] flex-shrink-0 mr-3">description</span>
+<div class="flex-1 flex flex-col justify-center min-w-0">
+<label class="font-label-sm text-label-sm text-primary tracking-wider" for="eventTitleInput">事件名称</label>
+<input class="w-full bg-transparent border-none outline-none font-body-lg text-body-lg text-on-surface placeholder:text-outline/60 p-0 leading-normal" id="eventTitleInput" placeholder="例如：毕业旅行、结婚纪念日" type="text" value="毕业旅行"/>
+</div>
+<button class="p-1 rounded-full text-outline-variant hover:text-on-surface-variant flex items-center justify-center transition-colors" id="clearTitleBtn" type="button">
+<span class="material-symbols-outlined text-[18px]">cancel</span>
+</button>
+</div>
+<div class="flex items-center justify-between px-3 mt-1.5">
+<span class="font-body-sm text-body-sm text-on-surface-variant">必填，用于卡片展示与定时提醒</span>
+<span class="font-label-sm text-label-sm text-outline" id="titleCharCount">4/24</span>
+</div>
+</div>
+<!-- Input Field 2: Target Date Picker -->
+<div class="flex flex-col w-full">
+<div class="relative w-full h-[56px] rounded-[16px] bg-surface-container-lowest shadow-sm flex items-center px-4 cursor-pointer active:scale-[0.99] transition-all" id="datePickerRow" role="button" tabindex="0">
+<span class="material-symbols-outlined text-outline text-[22px] flex-shrink-0 mr-3">calendar_month</span>
+<div class="flex-1 flex flex-col justify-center min-w-0">
+<label class="font-label-sm text-label-sm text-outline tracking-wider">目标日期</label>
+<span class="font-body-lg text-body-lg text-on-surface truncate" id="displayDateText">2027年12月18日</span>
+</div>
+<div class="flex items-center gap-1.5 flex-shrink-0">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">周六</span>
+<span class="material-symbols-outlined text-outline text-[20px]">expand_more</span>
+</div>
+</div>
+<div class="flex items-center justify-between px-3 mt-1.5">
+<span class="font-body-sm text-body-sm text-on-surface-variant">自动推算倒计时剩余天数</span>
+<span class="font-label-sm text-label-sm text-primary flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[14px]">update</span>
+          距今尚有 128 天
+        </span>
+</div>
+</div>
+<!-- M3 Switch Row (Notifications) -->
+<div class="w-full rounded-[20px] bg-surface-container-low p-4 flex items-center justify-between shadow-sm">
+<div class="flex items-start gap-3 min-w-0 pr-3">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary mt-0.5">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">notifications_active</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-title-md text-title-md text-on-surface">开启提醒</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">提前 7 天及当天 09:00 推送提醒</span>
+</div>
+</div>
+<!-- M3 Expressive Native Pill Switch -->
+<label class="relative inline-flex items-center cursor-pointer flex-shrink-0 select-none">
+<input checked="" class="sr-only peer" id="notificationSwitch" type="checkbox"/>
+<div class="w-[52px] h-[32px] bg-surface-container-highest rounded-full peer-checked:bg-primary transition-colors flex items-center px-1">
+<div class="w-6 h-6 bg-outline rounded-full peer-checked:bg-on-primary peer-checked:translate-x-[20px] transition-transform duration-200 flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[14px] text-primary hidden peer-checked:block" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</div>
+</label>
+</div>
+<!-- M3 Expressive Slider Block (Priority / Weight) -->
+<div class="w-full rounded-[20px] bg-surface-container-low p-4 flex flex-col gap-3 shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">low_priority</span>
+<span class="font-title-md text-title-md text-on-surface">提醒权重与置顶优先级</span>
+</div>
+<span class="px-2.5 py-0.5 rounded-full bg-primary text-on-primary font-label-md text-label-md tabular-nums" id="sliderValueBadge">40%</span>
+</div>
+<div class="relative flex flex-col justify-center py-2">
+<!-- Expressive Slider Track Visual -->
+<div class="relative w-full h-3 bg-surface-container-highest rounded-full overflow-hidden flex items-center pointer-events-none">
+<div class="h-full bg-primary rounded-full transition-all duration-75" id="sliderFill" style="width: 40%;"></div>
+</div>
+<!-- Standard HTML range input placed seamlessly over the track -->
+<input class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" id="prioritySlider" max="100" min="0" step="5" type="range" value="40"/>
+<!-- Tick Labels -->
+<div class="flex items-center justify-between mt-2.5 px-0.5">
+<span class="font-label-sm text-label-sm text-on-surface-variant">普通归档</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">次要关注 (40%)</span>
+<span class="font-label-sm text-label-sm text-primary font-bold">首页大卡置顶</span>
+</div>
+</div>
+</div>
+<!-- Additional Delight Category Selector (Optional chips for M3 experience) -->
+<div class="flex flex-col gap-2 pt-1">
+<span class="font-label-sm text-label-sm text-outline px-1">所属纪念分类</span>
+<div class="flex items-center gap-2 overflow-x-auto pb-1" style="scrollbar-width: none;">
+<button class="category-chip h-8 px-3.5 rounded-lg bg-secondary-container text-on-secondary-container font-label-lg text-label-lg flex items-center gap-1.5 flex-shrink-0 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">flight_takeoff</span>
+          旅行
+        </button>
+<button class="category-chip h-8 px-3.5 rounded-lg bg-surface-container-lowest text-on-surface-variant font-label-lg text-label-lg flex items-center gap-1.5 flex-shrink-0 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">favorite</span>
+          纪念日
+        </button>
+<button class="category-chip h-8 px-3.5 rounded-lg bg-surface-container-lowest text-on-surface-variant font-label-lg text-label-lg flex items-center gap-1.5 flex-shrink-0 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">cake</span>
+          生日
+        </button>
+<button class="category-chip h-8 px-3.5 rounded-lg bg-surface-container-lowest text-on-surface-variant font-label-lg text-label-lg flex items-center gap-1.5 flex-shrink-0 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">school</span>
+          考试
+        </button>
+</div>
+</div>
+</form>
+<!-- Sticky-compatible Bottom Dock for Primary Action -->
+<div class="w-full mt-spacing-lg">
+<button class="w-full h-button-height rounded-full bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all hover:bg-primary/90" id="saveButton" type="button">
+<span class="material-symbols-outlined text-[20px]">add</span>
+<span>保存倒数日</span>
+</button>
+</div>
+<!-- Toast Notification Overlay (Micro-interaction) -->
+<div class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface px-5 py-2.5 rounded-full font-body-md text-body-md shadow-xl flex items-center gap-2 pointer-events-none opacity-0 transition-opacity duration-300 z-50" id="saveToast">
+<span class="material-symbols-outlined text-[18px] text-inverse-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span>倒数日已保存并同步日历</span>
+</div>
+</div>
+<script>
+  (function() {
+    const titleInput = document.getElementById('eventTitleInput');
+    const previewTitle = document.getElementById('previewTitle');
+    const titleCharCount = document.getElementById('titleCharCount');
+    const clearTitleBtn = document.getElementById('clearTitleBtn');
+    const prioritySlider = document.getElementById('prioritySlider');
+    const sliderFill = document.getElementById('sliderFill');
+    const sliderValueBadge = document.getElementById('sliderValueBadge');
+    const saveButton = document.getElementById('saveButton');
+    const saveToast = document.getElementById('saveToast');
+    const categoryChips = document.querySelectorAll('.category-chip');
+
+    // Title live sync
+    if (titleInput) {
+      titleInput.addEventListener('input', (e) => {
+        const val = e.target.value;
+        previewTitle.textContent = val.trim() ? val : '新事件名称';
+        titleCharCount.textContent = `${val.length}/24`;
+      });
+    }
+
+    // Clear input
+    if (clearTitleBtn && titleInput) {
+      clearTitleBtn.addEventListener('click', () => {
+        titleInput.value = '';
+        previewTitle.textContent = '新事件名称';
+        titleCharCount.textContent = '0/24';
+        titleInput.focus();
+      });
+    }
+
+    // Slider interactive feedback
+    if (prioritySlider) {
+      prioritySlider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        sliderFill.style.width = `${val}%`;
+        sliderValueBadge.textContent = `${val}%`;
+      });
+    }
+
+    // Chip selection micro-interaction
+    categoryChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        categoryChips.forEach(c => {
+          c.classList.remove('bg-secondary-container', 'text-on-secondary-container');
+          c.classList.add('bg-surface-container-lowest', 'text-on-surface-variant');
+        });
+        chip.classList.remove('bg-surface-container-lowest', 'text-on-surface-variant');
+        chip.classList.add('bg-secondary-container', 'text-on-secondary-container');
+      });
+    });
+
+    // Save and navigate back feedback
+    if (saveButton && saveToast) {
+      saveButton.addEventListener('click', () => {
+        saveToast.classList.remove('opacity-0');
+        saveToast.classList.add('opacity-100');
+        setTimeout(() => {
+          saveToast.classList.remove('opacity-100');
+          saveToast.classList.add('opacity-0');
+          if (window.history.length > 1) {
+            window.history.back();
+          }
+        }, 1100);
+      });
+    }
+  })();
+</script></main></body></html>
