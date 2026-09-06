@@ -1,0 +1,27 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="app" type="AndroidRunConfigurationType" factoryName="Android App">
+    <module name="Serein_Day.app" />
+    <option name="DEPLOY" value="true" />
+    <option name="DEPLOY_APK_FROM_BUNDLE" value="false" />
+    <option name="DEPLOY_AS_INSTANT" value="false" />
+    <option name="ANDROID_INSTANT_RUN" value="false" />
+    <option name="DEPLOY_TARGET_RUN_ASAP" value="true" />
+    <option name="CLEAR_LOGCAT" value="false" />
+    <option name="SHOW_LOGCAT_AUTOMATICALLY" value="true" />
+    <option name="SKIP_NOOP_APK_INSTALLATIONS" value="true" />
+    <option name="FORCE_INSTALL_RUNNING" value="false" />
+    <option name="TARGET_SELECTION_MODE" value="DEVICE_AND_SNAPSHOT_COMBO_BOX" />
+    <option name="SELECTED_CLOUD_MATRIX_CONFIGURATION_ID" value="-1" />
+    <option name="SELECTED_CLOUD_MATRIX_PROJECT_ID" value="" />
+    <option name="DEBUGGER_TYPE" value="Java" />
+    <Java />
+    <Profilers>
+      <option name="ADVANCED_PROFILING_ENABLED" value="false" />
+      <option name="STARTUP_CPU_PROFILING_ENABLED" value="false" />
+      <option name="STARTUP_CPU_PROFILING_FUNCTION_NAME" value="" />
+    </Profilers>
+    <method v="2">
+      <option name="Android.Gradle.BeforeRunTask" enabled="true" />
+    </method>
+  </configuration>
+</component>

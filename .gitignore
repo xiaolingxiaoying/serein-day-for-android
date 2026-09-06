@@ -1,7 +1,8 @@
 .gradle/
 build/
 app/build/
-.idea/
+.idea/*
+!.idea/runConfigurations/
 local.properties
 *.iml
 .shots/
