@@ -71,7 +71,7 @@ import java.io.File
 import kotlin.math.roundToInt
 
 /**
- * 极简顶栏：左侧为返回箭头或自定义槽位（如倒数本切换菜单），右侧为可选文字按钮。
+ * 极简顶栏：左侧为返回箭头或自定义槽位（如倒数本切换菜单），右侧为可选文字按钮或图标槽位。
  */
 @Composable
 fun TopBar(
@@ -80,31 +80,30 @@ fun TopBar(
     onLeading: (() -> Unit)? = null,
     leadingSlot: (@Composable () -> Unit)? = null,
     trailingText: String? = null,
-    onTrailing: (() -> Unit)? = null
+    onTrailing: (() -> Unit)? = null,
+    trailingSlot: (@Composable () -> Unit)? = null
 ) {
     val s = LocalSerein.current
     Row(
         modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
-            when {
-                leadingSlot != null -> leadingSlot()
-                leadingIcon != null -> Icon(
-                    leadingIcon,
-                    contentDescription = null,
-                    tint = s.onSurface,
-                    modifier = Modifier.size(23.dp).clickable(enabled = onLeading != null) { onLeading?.invoke() }
-                )
-                else -> Icon(
-                    Icons.Filled.Menu,
-                    contentDescription = null,
-                    tint = s.onSurface,
-                    modifier = Modifier.size(23.dp).clickable(enabled = onLeading != null) { onLeading?.invoke() }
-                )
+        if (leadingSlot != null || leadingIcon != null) {
+            Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+                when {
+                    leadingSlot != null -> leadingSlot()
+                    else -> leadingIcon?.let { icon ->
+                        Icon(
+                            icon,
+                            contentDescription = null,
+                            tint = s.onSurface,
+                            modifier = Modifier.size(23.dp).clickable(enabled = onLeading != null) { onLeading?.invoke() }
+                        )
+                    }
+                }
             }
+            Spacer(Modifier.width(6.dp))
         }
-        Spacer(Modifier.width(6.dp))
         Text(
             title,
             color = s.onSurface,
@@ -112,7 +111,9 @@ fun TopBar(
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f)
         )
-        if (trailingText != null) {
+        if (trailingSlot != null) {
+            trailingSlot()
+        } else if (trailingText != null) {
             Text(
                 trailingText,
                 color = s.primary,
@@ -138,7 +139,6 @@ fun BottomNavBar(selected: Int, onSelect: (Int) -> Unit) {
     data class Item(val label: String, val icon: ImageVector, val iconSelected: ImageVector)
     val items = listOf(
         Item("首页", Icons.Outlined.Home, Icons.Filled.Home),
-        Item("归档", Icons.Outlined.Inventory2, Icons.Filled.Inventory2),
         Item("设置", Icons.Outlined.Settings, Icons.Filled.Settings)
     )
     Row(

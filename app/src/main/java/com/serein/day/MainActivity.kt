@@ -8,7 +8,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -23,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
@@ -32,7 +30,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -63,9 +60,9 @@ class MainActivity : ComponentActivity() {
             var customPrimary by remember { mutableIntStateOf(settingsPrefs.getInt("customPrimary", 0xFF006B5B.toInt())) }
             var modeIndex by remember { mutableIntStateOf(settingsPrefs.getInt("mode", 2).coerceIn(0, 2)) }
             var haptics by remember { mutableStateOf(settingsPrefs.getBoolean("haptics", true)) }
-            var weekStart by remember { mutableStateOf(settingsPrefs.getString("weekStart", "周一") ?: "周一") }
             var pinnedNotif by remember { mutableStateOf(settingsPrefs.getBoolean("pinnedNotif", false)) }
-            var noteOrder by remember { mutableStateOf(repository.loadNoteOrder()) }
+            var minimalMode by remember { mutableStateOf(settingsPrefs.getBoolean("minimalMode", false)) }
+            var sortOrder by remember { mutableStateOf(repository.loadSortOrder()) }
 
             val dark = when (modeIndex) {
                 0 -> false
@@ -88,8 +85,6 @@ class MainActivity : ComponentActivity() {
                     books = books,
                     onBooksChange = { books = it; repository.saveBooks(it) },
                     coverStore = coverStore,
-                    noteOrder = noteOrder,
-                    onNoteOrderChange = { noteOrder = it; repository.saveNoteOrder(it) },
                     paletteIndex = paletteIndex,
                     onPaletteChange = { paletteIndex = it; settingsPrefs.edit().putInt("palette", it).apply() },
                     customPrimary = customPrimary,
@@ -98,10 +93,12 @@ class MainActivity : ComponentActivity() {
                     onModeChange = { modeIndex = it; settingsPrefs.edit().putInt("mode", it).apply() },
                     haptics = haptics,
                     onHapticsChange = { haptics = it; settingsPrefs.edit().putBoolean("haptics", it).apply() },
-                    weekStart = weekStart,
-                    onWeekStartChange = { weekStart = it; settingsPrefs.edit().putString("weekStart", it).apply() },
                     pinnedNotif = pinnedNotif,
-                    onPinnedNotifChange = { pinnedNotif = it; settingsPrefs.edit().putBoolean("pinnedNotif", it).apply() }
+                    onPinnedNotifChange = { pinnedNotif = it; settingsPrefs.edit().putBoolean("pinnedNotif", it).apply() },
+                    minimalMode = minimalMode,
+                    onMinimalModeChange = { minimalMode = it; settingsPrefs.edit().putBoolean("minimalMode", it).apply() },
+                    sortOrder = sortOrder,
+                    onSortOrderChange = { sortOrder = it; repository.saveSortOrder(it) }
                 )
             }
         }
@@ -115,8 +112,6 @@ private fun SereinApp(
     books: List<Book>,
     onBooksChange: (List<Book>) -> Unit,
     coverStore: CoverStore,
-    noteOrder: NoteOrder,
-    onNoteOrderChange: (NoteOrder) -> Unit,
     paletteIndex: Int,
     onPaletteChange: (Int) -> Unit,
     customPrimary: Int,
@@ -125,10 +120,12 @@ private fun SereinApp(
     onModeChange: (Int) -> Unit,
     haptics: Boolean,
     onHapticsChange: (Boolean) -> Unit,
-    weekStart: String,
-    onWeekStartChange: (String) -> Unit,
     pinnedNotif: Boolean,
-    onPinnedNotifChange: (Boolean) -> Unit
+    onPinnedNotifChange: (Boolean) -> Unit,
+    minimalMode: Boolean,
+    onMinimalModeChange: (Boolean) -> Unit,
+    sortOrder: SortOrder,
+    onSortOrderChange: (SortOrder) -> Unit
 ) {
     val s = LocalSerein.current
     val context = LocalContext.current
@@ -138,13 +135,15 @@ private fun SereinApp(
     var detailId by remember { mutableStateOf<String?>(null) }
     var selectedBookId by remember { mutableStateOf<String?>(null) }
     var showBookManager by remember { mutableStateOf(false) }
+    var showArchive by remember { mutableStateOf(false) }
 
     val overlayOpen = adding || editing != null
-    BackHandler(enabled = overlayOpen || detailId != null) {
+    BackHandler(enabled = overlayOpen || detailId != null || showArchive) {
         when {
             editing != null -> editing = null
             adding -> adding = false
-            else -> detailId = null
+            detailId != null -> detailId = null
+            else -> showArchive = false
         }
     }
 
@@ -159,11 +158,15 @@ private fun SereinApp(
                     initial = editing,
                     books = books,
                     coverStore = coverStore,
+                    minimalMode = minimalMode,
                     onCancel = { adding = false; editing = null },
                     onSave = { updated ->
                         var final = updated
                         if (final.cover?.startsWith("draft.") == true) {
                             final = final.copy(cover = coverStore.renameDraft(final.id, final.cover!!))
+                        }
+                        if (final.wallpaper?.startsWith("draftw.") == true) {
+                            final = final.copy(wallpaper = coverStore.renameDraft("${final.id}.w", final.wallpaper!!))
                         }
                         if (editing == null) {
                             onDaysChange(days + final)
@@ -178,6 +181,7 @@ private fun SereinApp(
                     onDelete = editing?.let { day ->
                         {
                             if (day.cover != null) coverStore.remove(day.cover)
+                            if (day.wallpaper != null) coverStore.remove(day.wallpaper)
                             onDaysChange(days.filterNot { it.id == day.id })
                             editing = null
                             detailId = null
@@ -189,22 +193,21 @@ private fun SereinApp(
                     val detailDay = days.find { it.id == detailId }
                     if (detailDay == null) {
                         MainTabs(
-                            days, onDaysChange, books, onBooksChange, coverStore, noteOrder, onNoteOrderChange,
+                            days, onDaysChange, books, onBooksChange, coverStore,
                             tab, { tab = it }, haptics, { adding = true },
-                            selectedBookId, { selectedBookId = it }, false, { showBookManager = true },
-                            { detailId = it },
+                            selectedBookId, { selectedBookId = it }, { showBookManager = true },
+                            { detailId = it }, { showArchive = true },
                             paletteIndex, onPaletteChange, customPrimary, onCustomPrimaryChange,
-                            modeIndex, onModeChange, onHapticsChange,
-                            weekStart, onWeekStartChange, pinnedNotif, onPinnedNotifChange
+                            modeIndex, onModeChange, onHapticsChange, pinnedNotif, onPinnedNotifChange,
+                            minimalMode, onMinimalModeChange, sortOrder, onSortOrderChange
                         )
                     } else {
                         DetailScreen(
                             day = detailDay,
                             books = books,
-                            noteOrder = noteOrder,
                             coverStore = coverStore,
+                            minimalMode = minimalMode,
                             onBack = { detailId = null },
-                            onToggleNoteOrder = { onNoteOrderChange(if (noteOrder == NoteOrder.LATEST_FIRST) NoteOrder.CHRONOLOGICAL else NoteOrder.LATEST_FIRST) },
                             onPublishNote = { text ->
                                 mutateDay(detailDay.id) { d ->
                                     d.copy(notes = d.notes + Note(DayRepository.newNoteId(), text.trim(), LocalDateTime.now()))
@@ -213,7 +216,7 @@ private fun SereinApp(
                             onEditNote = { noteId, text ->
                                 mutateDay(detailDay.id) { d ->
                                     d.copy(notes = d.notes.map { n ->
-                                        if (n.id == noteId && n.isEditableToday()) n.copy(text = text.trim(), updatedAt = LocalDateTime.now()) else n
+                                        if (n.id == noteId) n.copy(text = text.trim(), updatedAt = LocalDateTime.now()) else n
                                     })
                                 }
                             },
@@ -231,22 +234,34 @@ private fun SereinApp(
                                 Toast.makeText(context, "已恢复到主列表", Toast.LENGTH_SHORT).show()
                             },
                             onDelete = { id ->
-                                coverStore.remove(days.find { it.id == id }?.cover ?: "")
+                                val day = days.find { it.id == id }
+                                if (day?.cover != null) coverStore.remove(day.cover)
+                                if (day?.wallpaper != null) coverStore.remove(day.wallpaper)
                                 onDaysChange(days.filterNot { it.id == id })
                                 detailId = null
                                 Toast.makeText(context, "已彻底删除", Toast.LENGTH_SHORT).show()
+                            },
+                            onWallpaperChange = { name ->
+                                mutateDay(detailDay.id) { it.copy(wallpaper = name) }
                             }
                         )
                     }
                 }
+                showArchive -> ArchiveScreen(
+                    days = days,
+                    books = books,
+                    onBack = { showArchive = false },
+                    onOpen = { detailId = it; showArchive = false },
+                    coverStore = coverStore
+                )
                 else -> MainTabs(
-                    days, onDaysChange, books, onBooksChange, coverStore, noteOrder, onNoteOrderChange,
+                    days, onDaysChange, books, onBooksChange, coverStore,
                     tab, { tab = it }, haptics, { adding = true },
-                    selectedBookId, { selectedBookId = it }, showBookManager, { showBookManager = true },
-                    { detailId = it },
+                    selectedBookId, { selectedBookId = it }, { showBookManager = true },
+                    { detailId = it }, { showArchive = true },
                     paletteIndex, onPaletteChange, customPrimary, onCustomPrimaryChange,
-                    modeIndex, onModeChange, onHapticsChange,
-                    weekStart, onWeekStartChange, pinnedNotif, onPinnedNotifChange
+                    modeIndex, onModeChange, onHapticsChange, pinnedNotif, onPinnedNotifChange,
+                    minimalMode, onMinimalModeChange, sortOrder, onSortOrderChange
                 )
             }
         }
@@ -276,17 +291,15 @@ private fun MainTabs(
     books: List<Book>,
     onBooksChange: (List<Book>) -> Unit,
     coverStore: CoverStore,
-    noteOrder: NoteOrder,
-    onNoteOrderChange: (NoteOrder) -> Unit,
     tab: Int,
     onTabChange: (Int) -> Unit,
     haptics: Boolean,
     onAdd: () -> Unit,
     selectedBookId: String?,
     onSelectedBookChange: (String?) -> Unit,
-    showBookManager: Boolean,
     onManageBooks: () -> Unit,
     onOpenDetail: (String) -> Unit,
+    onOpenArchive: () -> Unit,
     paletteIndex: Int,
     onPaletteChange: (Int) -> Unit,
     customPrimary: Int,
@@ -294,16 +307,28 @@ private fun MainTabs(
     modeIndex: Int,
     onModeChange: (Int) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
-    weekStart: String,
-    onWeekStartChange: (String) -> Unit,
     pinnedNotif: Boolean,
-    onPinnedNotifChange: (Boolean) -> Unit
+    onPinnedNotifChange: (Boolean) -> Unit,
+    minimalMode: Boolean,
+    onMinimalModeChange: (Boolean) -> Unit,
+    sortOrder: SortOrder,
+    onSortOrderChange: (SortOrder) -> Unit
 ) {
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
             when (tab) {
-                0 -> HomeTab(days, books, selectedBookId, onSelectedBookChange, onManageBooks, onOpenDetail, coverStore)
-                1 -> ArchiveTab(days, books, onOpenDetail, coverStore)
+                0 -> HomeTab(
+                    days = days,
+                    books = books,
+                    selectedBookId = selectedBookId,
+                    onBookSelect = onSelectedBookChange,
+                    onManageBooks = onManageBooks,
+                    onOpen = onOpenDetail,
+                    onOpenArchive = onOpenArchive,
+                    coverStore = coverStore,
+                    minimalMode = minimalMode,
+                    sortOrder = sortOrder
+                )
                 else -> SettingsTab(
                     days = days,
                     books = books,
@@ -315,10 +340,12 @@ private fun MainTabs(
                     onModeChange = onModeChange,
                     haptics = haptics,
                     onHapticsChange = onHapticsChange,
-                    weekStart = weekStart,
-                    onWeekStartChange = onWeekStartChange,
                     pinnedNotif = pinnedNotif,
                     onPinnedNotifChange = onPinnedNotifChange,
+                    minimalMode = minimalMode,
+                    onMinimalModeChange = onMinimalModeChange,
+                    sortOrder = sortOrder,
+                    onSortOrderChange = onSortOrderChange,
                     onBackup = { shareText(context = null, title = "Serein Day 备份", text = DayRepository.toJson(days)) },
                     onManageBooks = onManageBooks
                 )

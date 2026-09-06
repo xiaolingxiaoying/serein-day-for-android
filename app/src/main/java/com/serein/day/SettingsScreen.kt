@@ -27,11 +27,11 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.BrightnessAuto
 import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Sort
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material.icons.outlined.Vibration
@@ -76,20 +76,21 @@ fun SettingsTab(
     onModeChange: (Int) -> Unit,
     haptics: Boolean,
     onHapticsChange: (Boolean) -> Unit,
-    weekStart: String,
-    onWeekStartChange: (String) -> Unit,
     pinnedNotif: Boolean,
     onPinnedNotifChange: (Boolean) -> Unit,
+    minimalMode: Boolean,
+    onMinimalModeChange: (Boolean) -> Unit,
+    sortOrder: SortOrder,
+    onSortOrderChange: (SortOrder) -> Unit,
     onBackup: () -> Unit,
     onManageBooks: () -> Unit
 ) {
     val s = LocalSerein.current
     val context = LocalContext.current
-    var showReminderInfo by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
     var showPrivacy by remember { mutableStateOf(false) }
     var showCustomColor by remember { mutableStateOf(false) }
-    var showWeekStart by remember { mutableStateOf(false) }
+    var showSortOrder by remember { mutableStateOf(false) }
     val modeName = listOf("浅色", "深色", "跟随系统")[modeIndex.coerceIn(0, 2)]
 
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -122,7 +123,7 @@ fun SettingsTab(
             Spacer(Modifier.height(12.dp))
             Text("外观与主题", color = s.onSurface, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(4.dp))
-            Text("Serene Forest Mint · $modeName 模式 · Roboto Flex", color = s.onSurfaceVariant, fontSize = 13.sp)
+            Text("Serene Forest Mint · $modeName 模式", color = s.onSurfaceVariant, fontSize = 13.sp)
             Spacer(Modifier.height(14.dp))
             Column(
                 Modifier
@@ -170,8 +171,30 @@ fun SettingsTab(
             }
         }
 
-        SettingsSectionLabel("偏好与核心数据")
+        SettingsSectionLabel("偏好")
         Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            SettingsCard(
+                iconBg = if (minimalMode) s.primary else s.secondaryContainer,
+                icon = Icons.Outlined.Spa,
+                iconTint = if (minimalMode) s.onPrimary else s.onAccentStrong,
+                title = "极简模式",
+                subtitle = if (minimalMode) "已开启：纯列表，隐藏装饰与图片设置" else "纯列表展示，隐藏封面、语录等装饰",
+                trailing = {
+                    Switch(
+                        checked = minimalMode,
+                        onCheckedChange = onMinimalModeChange,
+                        colors = SwitchDefaults.colors(checkedTrackColor = s.primary, checkedThumbColor = s.onPrimary)
+                    )
+                }
+            )
+            SettingsCard(
+                iconBg = s.secondaryContainer,
+                icon = Icons.Outlined.Sort,
+                iconTint = s.onAccentStrong,
+                title = "排序方式",
+                subtitle = sortOrderLabel(sortOrder),
+                onClick = { showSortOrder = true }
+            )
             SettingsCard(
                 iconBg = s.secondaryContainer,
                 icon = Icons.Filled.Edit,
@@ -202,38 +225,6 @@ fun SettingsTab(
             )
             SettingsCard(
                 iconBg = s.secondaryContainer,
-                icon = Icons.Outlined.Notifications,
-                iconTint = s.onAccentStrong,
-                title = "提醒设置",
-                subtitle = "在编辑页为每个日子单独开启提醒",
-                onClick = { showReminderInfo = true }
-            )
-            SettingsCard(
-                iconBg = Peach,
-                icon = Icons.Outlined.Backup,
-                iconTint = OnPeach,
-                title = "数据与备份",
-                subtitle = "全部记录导出为 JSON 并分享（共 ${days.size} 条）",
-                onClick = onBackup
-            )
-        }
-
-        SettingsSectionLabel("日历与系统行为")
-        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SettingsCard(
-                iconBg = s.secondaryContainer,
-                icon = Icons.Outlined.Spa,
-                iconTint = s.onAccentStrong,
-                title = "周起始日",
-                subtitle = "日历视图第一列显示",
-                trailing = {
-                    PillChip(weekStart, s.accent, s.onAccentStrong)
-                    Spacer(Modifier.width(6.dp))
-                },
-                onClick = { showWeekStart = true }
-            )
-            SettingsCard(
-                iconBg = s.secondaryContainer,
                 icon = Icons.Outlined.Vibration,
                 iconTint = s.onAccentStrong,
                 title = "触感反馈",
@@ -246,6 +237,14 @@ fun SettingsTab(
                     )
                 }
             )
+            SettingsCard(
+                iconBg = Peach,
+                icon = Icons.Outlined.Backup,
+                iconTint = OnPeach,
+                title = "数据与备份",
+                subtitle = "全部记录导出为 JSON 并分享（共 ${days.size} 条）",
+                onClick = onBackup
+            )
         }
 
         SettingsSectionLabel("关于软件")
@@ -255,7 +254,7 @@ fun SettingsTab(
                 icon = Icons.Outlined.Info,
                 iconTint = s.onAccentStrong,
                 title = "关于 Serein Day",
-                subtitle = "v1.1.0 Expressive · Material You 3",
+                subtitle = "v1.2.0 极简 · Days Matter 式",
                 onClick = { showAbout = true }
             )
             SettingsCard(
@@ -288,23 +287,17 @@ fun SettingsTab(
             onDismiss = { showCustomColor = false }
         )
     }
-    if (showWeekStart) {
-        WeekStartDialog(
-            current = weekStart,
-            onSelect = { onWeekStartChange(it); showWeekStart = false },
-            onDismiss = { showWeekStart = false }
+    if (showSortOrder) {
+        SortOrderDialog(
+            current = sortOrder,
+            onSelect = { onSortOrderChange(it); showSortOrder = false },
+            onDismiss = { showSortOrder = false }
         )
-    }
-    if (showReminderInfo) {
-        InfoDialog(
-            title = "提醒设置",
-            text = "在新建或编辑倒数日时打开「开启提醒」，即可为该日子保存提醒计划（提前 7 天及当天 09:00）。通知推送能力将在后续版本中启用。"
-        ) { showReminderInfo = false }
     }
     if (showAbout) {
         InfoDialog(
             title = "关于 Serein Day",
-            text = "Serein Day v1.1.0\nSerene Forest Mint · Material 3 Expressive\n\n一个温柔、纯净的倒数日应用，把重要的日子留在眼前。"
+            text = "Serein Day v1.2.0\nSerene Forest Mint · Material 3\n\n一个简约的倒数日应用，把重要的日子留在眼前。"
         ) { showAbout = false }
     }
     if (showPrivacy) {
@@ -313,6 +306,51 @@ fun SettingsTab(
             text = "Serein Day 完全离线运行：所有记录只保存在本机应用存储中，不联网、不上传、不收集任何数据。清除应用数据或卸载即会删除全部记录。"
         ) { showPrivacy = false }
     }
+}
+
+private fun sortOrderLabel(order: SortOrder): String = when (order) {
+    SortOrder.BY_REMAINING -> "按剩余天数"
+    SortOrder.BY_DATE -> "按目标日期"
+    SortOrder.BY_CREATED -> "按添加时间"
+}
+
+@Composable
+private fun SortOrderDialog(current: SortOrder, onSelect: (SortOrder) -> Unit, onDismiss: () -> Unit) {
+    val s = LocalSerein.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("排序方式") },
+        text = {
+            Column {
+                listOf(
+                    SortOrder.BY_REMAINING to "按剩余天数",
+                    SortOrder.BY_DATE to "按目标日期",
+                    SortOrder.BY_CREATED to "按添加时间"
+                ).forEach { (option, label) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onSelect(option) }
+                            .padding(vertical = 12.dp, horizontal = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            label,
+                            color = s.onSurface,
+                            fontSize = 15.sp,
+                            fontWeight = if (option == current) FontWeight.SemiBold else FontWeight.Normal,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (option == current) {
+                            Icon(Icons.Filled.Check, contentDescription = "已选择", tint = s.primary, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("取消", color = s.primary) } }
+    )
 }
 
 @Composable
@@ -408,41 +446,6 @@ private fun CustomColorDialog(initial: Int, onConfirm: (Int) -> Unit, onDismiss:
         },
         confirmButton = { TextButton(onClick = { onConfirm(argb) }) { Text("使用此颜色", color = s.primary, fontWeight = FontWeight.SemiBold) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
-    )
-}
-
-@Composable
-private fun WeekStartDialog(current: String, onSelect: (String) -> Unit, onDismiss: () -> Unit) {
-    val s = LocalSerein.current
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("周起始日") },
-        text = {
-            Column {
-                listOf("周一", "周六", "周日").forEach { option ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onSelect(option) }
-                            .padding(vertical = 12.dp, horizontal = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            option,
-                            color = s.onSurface,
-                            fontSize = 15.sp,
-                            fontWeight = if (option == current) FontWeight.SemiBold else FontWeight.Normal,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (option == current) {
-                            Icon(Icons.Filled.Check, contentDescription = "已选择", tint = s.primary, modifier = Modifier.size(20.dp))
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("取消", color = s.primary) } }
     )
 }
 

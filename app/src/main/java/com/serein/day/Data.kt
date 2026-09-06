@@ -11,25 +11,24 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
-/** 一条小记：盖有不可变的发布时刻；写下当天内可编辑并留修改时间，过后只能删除。 */
+/** 一条小记：盖有发布时刻，随时可编辑、可删除。 */
 data class Note(
     val id: String,
     val text: String,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime? = null
-) {
-    /** 「当天编辑窗」：发布时刻的本地日历日 == 当前本地日历日。 */
-    fun isEditableToday(today: LocalDate = LocalDate.now()): Boolean = createdAt.toLocalDate() == today
-}
+)
 
 /** 倒数本：事件的归属分组，可新建、重命名、删除（删除时事件移入首个剩余倒数本）。 */
 data class Book(val id: String, val name: String)
 
-enum class NoteOrder { LATEST_FIRST, CHRONOLOGICAL }
+/** 列表排序方式（Days Matter 式：置顶始终在最前）。 */
+enum class SortOrder { BY_REMAINING, BY_DATE, BY_CREATED }
 
 /**
  * 倒数事件。
  * date 为公历锚点日期；lunar=true 表示按其农历月日记忆；repeatYearly=true 表示每年重复。
+ * cover 为卡片封面副本文件名；wallpaper 为详情页背景壁纸副本文件名（两者独立）。
  */
 data class Countdown(
     val id: String,
@@ -40,6 +39,7 @@ data class Countdown(
     val bookId: String = "",
     val notes: List<Note> = emptyList(),
     val cover: String? = null,
+    val wallpaper: String? = null,
     val remind: Boolean = false,
     val priority: Int = 0,
     val archived: Boolean = false,
@@ -93,6 +93,7 @@ class DayRepository(context: Context) {
                 bookId = bookId,
                 notes = parsedNotes,
                 cover = item.optString("cover").takeIf { it.isNotEmpty() },
+                wallpaper = item.optString("wallpaper").takeIf { it.isNotEmpty() },
                 remind = item.optBoolean("remind"),
                 priority = if (item.optBoolean("pinned")) 2 else item.optInt("priority", 0),
                 archived = item.optBoolean("archived"),
@@ -129,16 +130,19 @@ class DayRepository(context: Context) {
         return loaded
     }
 
-    fun loadNoteOrder(): NoteOrder = when (settingsPrefs.getString("noteOrder", null)) {
-        "chronological" -> NoteOrder.CHRONOLOGICAL
-        else -> NoteOrder.LATEST_FIRST
+    fun loadSortOrder(): SortOrder = when (settingsPrefs.getString("sortOrder", null)) {
+        "date" -> SortOrder.BY_DATE
+        "created" -> SortOrder.BY_CREATED
+        else -> SortOrder.BY_REMAINING
     }
 
-    fun saveNoteOrder(order: NoteOrder) {
-        settingsPrefs.edit().putString(
-            "noteOrder",
-            if (order == NoteOrder.CHRONOLOGICAL) "chronological" else "latest_first"
-        ).apply()
+    fun saveSortOrder(order: SortOrder) {
+        val key = when (order) {
+            SortOrder.BY_DATE -> "date"
+            SortOrder.BY_CREATED -> "created"
+            SortOrder.BY_REMAINING -> "remaining"
+        }
+        settingsPrefs.edit().putString("sortOrder", key).apply()
     }
 
     companion object {
@@ -163,6 +167,7 @@ class DayRepository(context: Context) {
                     put("bookId", day.bookId)
                     put("notes", notes)
                     day.cover?.let { put("cover", it) }
+                    day.wallpaper?.let { put("wallpaper", it) }
                     put("remind", day.remind)
                     put("priority", day.priority)
                     put("pinned", day.priority == 2)
@@ -186,24 +191,24 @@ class DayRepository(context: Context) {
     }
 }
 
-/** 封面副本：与原图脱钩，存于应用私有 covers/ 目录，文件名用事件 id。 */
+/** 图片副本：与原图脱钩，存于应用私有 covers/ 目录。封面文件名为 <id>.*，详情壁纸为 <id>.w.*。 */
 class CoverStore(context: Context) {
     private val resolver = context.applicationContext.contentResolver
     private val dir = File(context.filesDir, "covers").apply { mkdirs() }
 
-    /** 从内容 URI 复制副本，返回文件名。 */
-    fun copyIn(uri: Uri, id: String): String? = runCatching {
+    /** 从内容 URI 复制副本，返回文件名。base 为「id」或「id.w」。 */
+    fun copyIn(uri: Uri, base: String): String? = runCatching {
         val ext = when (resolver.getType(uri)) {
             "image/png" -> "png"
             "image/webp" -> "webp"
             "image/gif" -> "gif"
             else -> "jpg"
         }
-        val name = "$id.$ext"
+        val name = "$base.$ext"
         val target = File(dir, name)
         target.outputStream().use { out -> resolver.openInputStream(uri)?.use { it.copyTo(out) } }
-        // 清理同 id 的旧扩展名副本
-        dir.listFiles { f -> f.name.startsWith("$id.") && f.name != name }?.forEach { it.delete() }
+        // 清理同 base 的旧扩展名副本（保留壁纸的 <id>.w.* 文件）
+        dir.listFiles { f -> f.name.startsWith("$base.") && f.name != name && !f.name.startsWith("$base.w.") }?.forEach { it.delete() }
         name
     }.getOrNull()
 
@@ -213,10 +218,10 @@ class CoverStore(context: Context) {
         File(dir, name).delete()
     }
 
-    /** 新建流程中封面先落为 draft.*，保存时改为真实事件 id。 */
-    fun renameDraft(id: String, draftName: String): String {
+    /** 新建流程中图片先落为 draft.* / draftw.*，保存时改为真实事件 id。 */
+    fun renameDraft(base: String, draftName: String): String {
         val ext = draftName.substringAfterLast('.', "jpg")
-        val target = "$id.$ext"
+        val target = "$base.$ext"
         if (File(dir, draftName).renameTo(File(dir, target))) return target
         return draftName
     }
@@ -297,12 +302,15 @@ fun countdownComparator(today: LocalDate = LocalDate.now()): Comparator<Countdow
         .thenByDescending { remainingDays(it, today) >= 0 }
         .thenBy { remainingDays(it, today) }
 
-val Categories = listOf("旅行", "纪念日", "生日", "考试")
+/** 设置页可选的排序方式：按剩余天数 / 按目标日期 / 按添加时间；置顶始终最前。 */
+fun sortCountdowns(days: List<Countdown>, order: SortOrder, today: LocalDate = LocalDate.now()): List<Countdown> {
+    val pinnedFirst = compareByDescending<Countdown> { it.priority == 2 }
+    val body: Comparator<Countdown> = when (order) {
+        SortOrder.BY_REMAINING -> compareBy { remainingDays(it, today) }
+        SortOrder.BY_DATE -> compareBy { targetDate(it, today) }
+        SortOrder.BY_CREATED -> compareByDescending { it.createdAt ?: LocalDate.MIN }
+    }
+    return days.sortedWith(pinnedFirst.thenByDescending { remainingDays(it, today) >= 0 }.then(body))
+}
 
-val Quotes = listOf(
-    "把期待写在日历的扉页上，每天醒来，便离心中的远方近了一步。",
-    "温柔的日子，会因为一个值得等待的日期而闪闪发光。",
-    "倒数不是焦虑，是把想念安放在时间里的方式。",
-    "每一个被认真记下的日子，都会在抵达时加倍明亮。",
-    "慢慢来，日子会替你把答案送到眼前。"
-)
+val Categories = listOf("旅行", "纪念日", "生日", "考试")
