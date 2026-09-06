@@ -145,8 +145,8 @@ private fun SereinApp(
             editing != null -> editing = null
             adding -> adding = false
             detailId != null -> detailId = null
+            showArchive -> showArchive = false
             showSettings -> showSettings = false
-            else -> showArchive = false
         }
     }
 
@@ -154,18 +154,19 @@ private fun SereinApp(
         onDaysChange(days.map { if (it.id == id) transform(it) else it })
     }
 
-    /** 页面栈深度：Main(0) → Settings/Archive(1) → Detail(2) → Editor(3)，越深越靠顶层。 */
+    /** 页面栈深度：Main(0) → Settings(1) → Archive(2) → Detail(3) → Editor(4)，越深越靠顶层。 */
     fun depthOf(screen: Screen): Int = when (screen) {
         Screen.Main -> 0
-        Screen.Settings, Screen.Archive -> 1
-        Screen.Detail -> 2
-        Screen.Editor -> 3
+        Screen.Settings -> 1
+        Screen.Archive -> 2
+        Screen.Detail -> 3
+        Screen.Editor -> 4
     }
     val screen = when {
         overlayOpen -> Screen.Editor
         detailId != null && days.any { it.id == detailId } -> Screen.Detail
-        showSettings -> Screen.Settings
         showArchive -> Screen.Archive
+        showSettings -> Screen.Settings
         else -> Screen.Main
     }
     val reducedMotion = rememberReducedMotion()
@@ -287,6 +288,19 @@ private fun SereinApp(
                             },
                             onWallpaperDimChange = { dim ->
                                 mutateDay(detailDay.id) { it.copy(wallpaperDim = dim) }
+                            },
+                            onAddSubDay = { title, date ->
+                                mutateDay(detailDay.id) { d ->
+                                    d.copy(subs = d.subs + SubDay(newSubDayId(), title, date))
+                                }
+                            },
+                            onEditSubDay = { subId, title, date ->
+                                mutateDay(detailDay.id) { d ->
+                                    d.copy(subs = d.subs.map { if (it.id == subId) it.copy(title = title, date = date) else it })
+                                }
+                            },
+                            onDeleteSubDay = { subId ->
+                                mutateDay(detailDay.id) { d -> d.copy(subs = d.subs.filterNot { it.id == subId }) }
                             }
                         )
                     } else {
@@ -313,6 +327,7 @@ private fun SereinApp(
                     onSortOrderChange = onSortOrderChange,
                     onBackup = { shareText(context, "Serein Day 备份", DayRepository.toJson(days)) },
                     onManageBooks = { showBookManager = true },
+                    onOpenArchive = { showArchive = true },
                     onBack = { showSettings = false }
                 )
                 Screen.Archive -> ArchiveScreen(
@@ -332,7 +347,6 @@ private fun SereinApp(
                     onSelectedBookChange = { selectedBookId = it },
                     onManageBooks = { showBookManager = true },
                     onOpenDetail = { detailId = it },
-                    onOpenArchive = { showArchive = true },
                     onOpenSettings = { showSettings = true },
                     onAdd = { adding = true }
                 )
@@ -372,7 +386,6 @@ private fun MainScreen(
     onSelectedBookChange: (String?) -> Unit,
     onManageBooks: () -> Unit,
     onOpenDetail: (String) -> Unit,
-    onOpenArchive: () -> Unit,
     onOpenSettings: () -> Unit,
     onAdd: () -> Unit
 ) {
@@ -384,7 +397,6 @@ private fun MainScreen(
             onBookSelect = onSelectedBookChange,
             onManageBooks = onManageBooks,
             onOpen = onOpenDetail,
-            onOpenArchive = onOpenArchive,
             onOpenSettings = onOpenSettings,
             coverStore = coverStore,
             minimalMode = minimalMode,

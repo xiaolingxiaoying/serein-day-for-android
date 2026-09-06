@@ -83,7 +83,10 @@ fun DetailScreen(
     onRestore: (String) -> Unit,
     onDelete: (String) -> Unit,
     onWallpaperChange: (String?) -> Unit,
-    onWallpaperDimChange: (Float) -> Unit
+    onWallpaperDimChange: (Float) -> Unit,
+    onAddSubDay: (String, LocalDate) -> Unit,
+    onEditSubDay: (String, String, LocalDate) -> Unit,
+    onDeleteSubDay: (String) -> Unit
 ) {
     val s = LocalSerein.current
     var pickingWallpaper by remember { mutableStateOf(false) }
@@ -91,6 +94,7 @@ fun DetailScreen(
     val wallpaperBitmap = rememberCoverBitmap(day.wallpaper, coverStore)
     // 壁纸压暗强度：拖动时本地实时生效，松手才落库
     var wallpaperDim by remember(day.id, day.wallpaper) { mutableFloatStateOf(day.wallpaperDim ?: 0.45f) }
+    val canEdit = !minimalMode && !day.archived
 
     Box(Modifier.fillMaxSize().background(s.surface)) {
         // 整页背景壁纸 + 可调压暗遮罩，保证前景文字可读
@@ -109,17 +113,7 @@ fun DetailScreen(
                 onWallpaper = wallpaperBitmap != null,
                 onBack = onBack,
                 onWallpaperClick = { pickingWallpaper = true },
-                trailing = if (!minimalMode && !day.archived) {
-                    {
-                        Text(
-                            "编辑",
-                            color = if (wallpaperBitmap != null) Color.White else s.primary,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable { onEditEvent(day) }.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
-                    }
-                } else null
+                onEdit = if (canEdit) { { onEditEvent(day) } } else null
             )
             if (day.archived) {
                 Text(
@@ -139,6 +133,13 @@ fun DetailScreen(
             ) {
                 MilestoneCard(day, books, coverStore, minimal = minimalMode)
                 if (!minimalMode) {
+                    SubDaysSection(
+                        subs = day.subs,
+                        archived = day.archived,
+                        onAdd = onAddSubDay,
+                        onEdit = onEditSubDay,
+                        onDelete = onDeleteSubDay
+                    )
                     NotesSection(
                         day = day,
                         onPublish = onPublishNote,
@@ -149,7 +150,6 @@ fun DetailScreen(
                 Spacer(Modifier.height(6.dp))
                 DetailActions(
                     day = day,
-                    onEdit = { onEditEvent(day) },
                     onShare = { onShare(day) },
                     onArchive = { onArchive(day.id) },
                     onRestore = { onRestore(day.id) },
@@ -223,14 +223,14 @@ fun DetailScreen(
     }
 }
 
-/** 详情顶栏：事件名做标题；有壁纸时前景改白色保证可读；壁纸按钮收进顶栏。 */
+/** 详情顶栏：事件名做标题；有壁纸时前景改白色保证可读；右上角为青柠圆形编辑钮。 */
 @Composable
 private fun DetailTopBar(
     title: String,
     onWallpaper: Boolean,
     onBack: () -> Unit,
     onWallpaperClick: () -> Unit,
-    trailing: (@Composable () -> Unit)?
+    onEdit: (() -> Unit)?
 ) {
     val s = LocalSerein.current
     val fg = if (onWallpaper) Color.White else s.onSurface
@@ -272,15 +272,28 @@ private fun DetailTopBar(
                 modifier = Modifier.size(18.dp)
             )
         }
-        trailing?.invoke()
+        if (onEdit != null) {
+            Spacer(Modifier.width(10.dp))
+            // 青柠圆形编辑钮（原长条编辑按钮的图标 + 配色）
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .pressScale(0.9f)
+                    .clip(CircleShape)
+                    .background(s.accent)
+                    .clickable(onClick = onEdit),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Filled.Edit, contentDescription = "编辑倒数日", tint = s.onAccent, modifier = Modifier.size(17.dp))
+            }
+        }
     }
 }
 
-/** 详情操作区：青柠主 CTA + 近黑次级胶囊。 */
+/** 详情操作区：分享 / 封存（编辑入口在右上角圆形青柠钮）。 */
 @Composable
 private fun DetailActions(
     day: Countdown,
-    onEdit: () -> Unit,
     onShare: () -> Unit,
     onArchive: () -> Unit,
     onRestore: () -> Unit,
@@ -288,21 +301,6 @@ private fun DetailActions(
 ) {
     val s = LocalSerein.current
     if (!day.archived) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .pressScale(0.97f)
-                .clip(RoundedCornerShape(50))
-                .background(s.accent)
-                .clickable { onEdit() }
-                .padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Filled.Edit, contentDescription = null, tint = s.onAccent, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("编辑倒数日", color = s.onAccent, fontSize = 15.5.sp, fontWeight = FontWeight.Bold)
-        }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SecondaryButton(
                 modifier = Modifier.weight(1f),
@@ -553,6 +551,192 @@ private fun yearRound(day: Countdown): Long =
     java.time.temporal.ChronoUnit.DAYS.between(previousOccurrence(day, targetDate(day)), LocalDate.now()).coerceAtLeast(0)
 
 fun milestoneStart(day: Countdown): LocalDate = day.createdAt ?: day.date.minusDays(90)
+
+/** 小倒数日倒数文案：还有 N 天 / 就是今天 / 已过 N 天。 */
+private fun subDayStatus(date: LocalDate): String {
+    val r = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), date)
+    return when {
+        r > 0 -> "还有 $r 天"
+        r == 0L -> "就是今天"
+        else -> "已过 ${-r} 天"
+    }
+}
+
+/** 小倒数日区：给主日子挂子节点（如报名、打印准考证），可增删改。 */
+@Composable
+private fun SubDaysSection(
+    subs: List<SubDay>,
+    archived: Boolean,
+    onAdd: (String, LocalDate) -> Unit,
+    onEdit: (String, String, LocalDate) -> Unit,
+    onDelete: (String) -> Unit
+) {
+    val s = LocalSerein.current
+    var adding by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<SubDay?>(null) }
+    val sorted = remember(subs) { subs.sortedBy { it.date } }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(s.container)
+            .padding(16.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("小倒数日", color = s.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(8.dp))
+            Text(subs.size.toString(), color = s.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        }
+        Spacer(Modifier.height(10.dp))
+        if (sorted.isEmpty()) {
+            Text(
+                "给这个日子挂几个前置小节点，比如报名、打印准考证",
+                color = s.onSurfaceVariant,
+                fontSize = 13.sp,
+                lineHeight = 19.sp
+            )
+        } else {
+            Column {
+                sorted.forEachIndexed { index, sub ->
+                    if (index > 0) {
+                        HorizontalDivider(color = s.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !archived) { editing = sub }
+                            .padding(vertical = 11.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(sub.title, color = s.onSurface, fontSize = 14.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "${sub.date.format(FmtDot)} · ${subDayStatus(sub.date)}",
+                                color = s.onSurfaceVariant,
+                                fontSize = 12.sp
+                            )
+                        }
+                        if (!archived) {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = "删除小倒数日",
+                                tint = s.outlineVariant,
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .padding(8.dp)
+                                    .clickable { onDelete(sub.id) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        if (!archived) {
+            Spacer(Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable { adding = true }
+                    .padding(vertical = 10.dp)
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, tint = s.onAccentStrong, modifier = Modifier.size(17.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("添加小倒数日", color = s.onAccentStrong, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+
+    if (adding) {
+        SubDayEditorSheet(
+            initial = null,
+            onConfirm = { title, date ->
+                onAdd(title, date)
+                adding = false
+            },
+            onDismiss = { adding = false }
+        )
+    }
+    if (editing != null) {
+        SubDayEditorSheet(
+            initial = editing,
+            onConfirm = { title, date ->
+                onEdit(editing!!.id, title, date)
+                editing = null
+            },
+            onDismiss = { editing = null }
+        )
+    }
+}
+
+/** 小倒数日编辑弹层：标题 + 日期（滚轮选择）。 */
+@Composable
+private fun SubDayEditorSheet(
+    initial: SubDay?,
+    onConfirm: (String, LocalDate) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val s = LocalSerein.current
+    var title by remember { mutableStateOf(initial?.title ?: "") }
+    var date by remember { mutableStateOf(initial?.date ?: LocalDate.now()) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val weekday = remember(date) { weekdayShort(date) }
+
+    SereinSheet(
+        title = if (initial == null) "添加小倒数日" else "编辑小倒数日",
+        onDismiss = onDismiss,
+        trailingText = "保存",
+        onTrailing = { if (title.isNotBlank()) onConfirm(title.trim(), date) }
+    ) {
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box {
+                if (title.isEmpty()) {
+                    Text("小倒数日名称（如：报名）", color = s.outlineVariant, fontSize = 16.sp)
+                }
+                BasicTextField(
+                    value = title,
+                    onValueChange = { if (it.length <= 24) title = it },
+                    singleLine = true,
+                    textStyle = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium, color = s.onSurface),
+                    cursorBrush = SolidColor(s.onAccentStrong),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(s.high)
+                    .clickable { showDatePicker = true }
+                    .padding(horizontal = 16.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("目标日期", color = s.onSurfaceVariant, fontSize = 12.sp)
+                    Spacer(Modifier.height(2.dp))
+                    Text("${date.format(FmtCn)} · $weekday", color = s.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
+                PillChip(subDayStatus(date), s.accent, s.onAccent, fontSize = 12.0)
+            }
+            Spacer(Modifier.height(4.dp))
+        }
+    }
+
+    if (showDatePicker) {
+        WheelDatePickerSheet(
+            initial = date,
+            title = "选择小倒数日日期",
+            onDismiss = { showDatePicker = false },
+            onConfirm = {
+                date = it
+                showDatePicker = false
+            }
+        )
+    }
+}
 
 /** 小记区：随时可编辑、可删除，最新在上。 */
 @Composable

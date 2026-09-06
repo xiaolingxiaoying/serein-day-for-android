@@ -26,11 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.EditNote
-import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Repeat
-import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -43,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -103,6 +98,8 @@ fun EditorScreen(
                 notes = initial?.notes ?: emptyList(),
                 cover = cover,
                 wallpaper = wallpaper,
+                wallpaperDim = initial?.wallpaperDim,
+                subs = initial?.subs ?: emptyList(),
                 remind = remind,
                 priority = if (pinned) 2 else 0,
                 archived = initial?.archived ?: false,
@@ -264,8 +261,6 @@ fun EditorScreen(
             ) {
                 if (!minimalMode) {
                     ImageRow(
-                        icon = Icons.Outlined.Image,
-                        iconBg = PastelLavender,
                         label = "封面图片",
                         hint = if (cover != null) "已设置，卡片与详情都会使用" else "选一张喜欢的图做卡片封面",
                         hasCurrent = cover != null,
@@ -273,8 +268,6 @@ fun EditorScreen(
                     )
                     HairlineInset(s)
                     ImageRow(
-                        icon = Icons.Outlined.Wallpaper,
-                        iconBg = PastelSky,
                         label = "详情页背景",
                         hint = if (wallpaper != null) "已设置，详情页会铺满展示" else "给详情页也换一张壁纸",
                         hasCurrent = wallpaper != null,
@@ -282,8 +275,6 @@ fun EditorScreen(
                     )
                     HairlineInset(s)
                     ToggleRow(
-                        icon = Icons.Outlined.NotificationsActive,
-                        iconBg = PastelButter,
                         title = "开启提醒",
                         subtitle = "提前 7 天及当天 09:00 提醒",
                         checked = remind,
@@ -292,8 +283,6 @@ fun EditorScreen(
                     HairlineInset(s)
                 }
                 ToggleRow(
-                    icon = Icons.Outlined.Flag,
-                    iconBg = PastelMint,
                     title = "置顶",
                     subtitle = "在首页大卡与列表最前展示",
                     checked = pinned,
@@ -382,21 +371,19 @@ fun EditorScreen(
     }
 }
 
-/** 组内细分隔线（自图标后缩进，iOS 分组列表式）。 */
+/** 组内细分隔线（自文字左缘起）。 */
 @Composable
 private fun HairlineInset(s: SereinPalette) {
     androidx.compose.material3.HorizontalDivider(
-        modifier = Modifier.padding(start = 50.dp),
+        modifier = Modifier.padding(start = 16.dp),
         color = s.outlineVariant.copy(alpha = 0.5f),
         thickness = 0.5.dp
     )
 }
 
-/** 图片设置行：整行可点，弹出三来源选择。 */
+/** 图片设置行：整行可点，弹出三来源选择（无图标）。 */
 @Composable
 private fun ImageRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconBg: Color,
     label: String,
     hint: String,
     hasCurrent: Boolean,
@@ -407,16 +394,15 @@ private fun ImageRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onPick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 16.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        IconCircle(iconBg, icon, Ink, size = 38.dp, iconSize = 18.dp)
         Column(Modifier.weight(1f)) {
             Text(label, color = s.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(2.dp))
             Text(hint, color = s.onSurfaceVariant, fontSize = 12.5.sp)
         }
+        Spacer(Modifier.width(12.dp))
         Text(
             if (hasCurrent) "更换" else "选择",
             color = s.onAccentStrong,
@@ -428,8 +414,6 @@ private fun ImageRow(
 
 @Composable
 private fun ToggleRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconBg: Color,
     title: String,
     subtitle: String,
     checked: Boolean,
@@ -439,16 +423,15 @@ private fun ToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 16.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        IconCircle(iconBg, icon, Ink, size = 38.dp, iconSize = 18.dp)
         Column(Modifier.weight(1f)) {
             Text(title, color = s.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(2.dp))
             Text(subtitle, color = s.onSurfaceVariant, fontSize = 12.5.sp)
         }
+        Spacer(Modifier.width(12.dp))
         Switch(
             checked = checked,
             onCheckedChange = onChecked,

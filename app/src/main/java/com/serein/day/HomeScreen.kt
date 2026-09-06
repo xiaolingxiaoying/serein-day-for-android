@@ -3,7 +3,6 @@ package com.serein.day
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,20 +21,24 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.Spa
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,13 +60,13 @@ fun HomeTab(
     onBookSelect: (String?) -> Unit,
     onManageBooks: () -> Unit,
     onOpen: (String) -> Unit,
-    onOpenArchive: () -> Unit,
     onOpenSettings: () -> Unit,
     coverStore: CoverStore,
     minimalMode: Boolean,
     sortOrder: SortOrder
 ) {
     val s = LocalSerein.current
+    var showBookFilter by remember { mutableStateOf(false) }
     val active = remember(days) { days.filterNot { it.archived } }
     val visible = remember(active, selectedBookId) {
         if (selectedBookId == null) active else active.filter { it.bookId == selectedBookId }
@@ -79,15 +82,31 @@ fun HomeTab(
             "已过去" to listDays.filter { remainingDays(it) < 0 }
         ).filter { it.second.isNotEmpty() }
     }
+    val bookCounts = remember(active) { active.groupingBy { it.bookId }.eachCount() }
     val listState = rememberLazyListState()
 
     Column(Modifier.fillMaxSize()) {
         BrandHeader(
-            subtitle = books.find { it.id == selectedBookId }?.name?.let { "倒数本 · $it" }
-                ?: "记录每一个重要时刻 · ${LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("M月d日 "))}${weekdayFull(LocalDate.now())}",
+            selectedBookName = books.find { it.id == selectedBookId }?.name,
+            onFilter = { showBookFilter = true },
             onOpenSettings = onOpenSettings
         )
-        BookChipsRow(books, selectedBookId, onBookSelect, onManageBooks, onOpenArchive)
+        if (showBookFilter) {
+            BookFilterSheet(
+                books = books,
+                counts = bookCounts,
+                selectedBookId = selectedBookId,
+                onSelect = {
+                    onBookSelect(it)
+                    showBookFilter = false
+                },
+                onManage = {
+                    showBookFilter = false
+                    onManageBooks()
+                },
+                onDismiss = { showBookFilter = false }
+            )
+        }
         if (visible.isEmpty()) {
             EmptyBook(selectedBookId != null)
             return
@@ -129,9 +148,9 @@ fun HomeTab(
     }
 }
 
-/** 品牌头部：Serein Day 大字标 + 副标题，右侧近黑圆钮（设置）。 */
+/** 品牌头部：Serein Day 大字标 + 「今天是 …」副标题，右侧倒数本筛选胶囊 + 设置圆钮。 */
 @Composable
-private fun BrandHeader(subtitle: String, onOpenSettings: () -> Unit) {
+private fun BrandHeader(selectedBookName: String?, onFilter: () -> Unit, onOpenSettings: () -> Unit) {
     val s = LocalSerein.current
     Row(
         modifier = Modifier
@@ -149,73 +168,109 @@ private fun BrandHeader(subtitle: String, onOpenSettings: () -> Unit) {
                 letterSpacing = (-1.2).sp
             )
             Spacer(Modifier.height(3.dp))
-            Text(subtitle, color = s.onSurfaceVariant, fontSize = 12.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                "今天是 ${LocalDate.now().format(FmtIso)} ${weekdayFull(LocalDate.now())}",
+                color = s.onSurfaceVariant,
+                fontSize = 12.5.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
+        // 倒数本筛选胶囊：当前选中本（或全部），点开选择弹层
+        Row(
+            modifier = Modifier
+                .pressScale(0.93f)
+                .clip(RoundedCornerShape(50))
+                .background(s.container)
+                .border(1.dp, s.outlineVariant, RoundedCornerShape(50))
+                .clickable(onClick = onFilter)
+                .padding(horizontal = 13.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Outlined.FilterAlt,
+                contentDescription = "筛选倒数本",
+                tint = s.primary,
+                modifier = Modifier.size(15.dp)
+            )
+            Spacer(Modifier.width(5.dp))
+            Text(
+                selectedBookName ?: "全部",
+                color = s.primary,
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+        }
+        Spacer(Modifier.width(10.dp))
         InkCircleButton(Icons.Filled.Settings, contentDescription = "设置", onClick = onOpenSettings)
     }
 }
 
-/** 主菜单栏：倒数本横滑切换（全部 / 各倒数本 / 管理 / 归档）。 */
+/** 倒数本选择弹层：全部 / 各倒数本（含事件数）/ 管理入口。 */
 @Composable
-private fun BookChipsRow(
+private fun BookFilterSheet(
     books: List<Book>,
+    counts: Map<String, Int>,
     selectedBookId: String?,
     onSelect: (String?) -> Unit,
     onManage: () -> Unit,
-    onArchive: () -> Unit
+    onDismiss: () -> Unit
 ) {
     val s = LocalSerein.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        BookChip("全部", selectedBookId == null) { onSelect(null) }
-        books.forEach { book ->
-            BookChip(book.name, selectedBookId == book.id) { onSelect(book.id) }
+    SereinSheet(title = "倒数本", onDismiss = onDismiss) {
+        Column(Modifier.padding(horizontal = 14.dp)) {
+            FilterRow(label = "全部", count = null, selected = selectedBookId == null) { onSelect(null) }
+            books.forEach { book ->
+                FilterRow(
+                    label = book.name,
+                    count = counts[book.id] ?: 0,
+                    selected = selectedBookId == book.id
+                ) { onSelect(book.id) }
+            }
+            HorizontalDivider(color = s.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 6.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(onClick = onManage)
+                    .padding(horizontal = 12.dp, vertical = 13.dp)
+            ) {
+                Icon(Icons.Outlined.Tune, contentDescription = null, tint = s.primary, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("管理倒数本", color = s.primary, fontSize = 14.5.sp, fontWeight = FontWeight.Bold)
+            }
         }
-        BookChip("管理", false, outline = true) { onManage() }
-        BookChip("归档", false, outline = true) { onArchive() }
     }
 }
 
 @Composable
-private fun BookChip(label: String, selected: Boolean, outline: Boolean = false, onClick: () -> Unit) {
+private fun FilterRow(label: String, count: Int?, selected: Boolean, onClick: () -> Unit) {
     val s = LocalSerein.current
-    val bg = animatedColor(
-        when {
-            selected -> Ink
-            outline -> Color.Transparent
-            else -> s.container
-        }
-    )
-    val fg = animatedColor(
-        when {
-            selected -> OnInk
-            outline -> s.onSurface
-            else -> s.onSurfaceVariant
-        }
-    )
-    Text(
-        label,
-        color = fg,
-        fontSize = 13.sp,
-        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+    Row(
         modifier = Modifier
-            .pressScale(0.93f)
-            .clip(RoundedCornerShape(50))
-            .background(bg)
-            .border(
-                width = if (selected) 0.dp else 1.dp,
-                color = if (outline) s.onSurface.copy(alpha = 0.85f) else s.outlineVariant,
-                shape = RoundedCornerShape(50)
-            )
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 15.dp, vertical = 7.dp)
-    )
+            .padding(horizontal = 12.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            color = s.onSurface,
+            fontSize = 15.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            modifier = Modifier.weight(1f)
+        )
+        if (count != null) {
+            Text("$count 个", color = s.onSurfaceVariant, fontSize = 12.sp)
+            Spacer(Modifier.width(10.dp))
+        }
+        if (selected) {
+            Icon(Icons.Filled.Check, contentDescription = "已选择", tint = s.onAccentStrong, modifier = Modifier.size(18.dp))
+        }
+    }
 }
 
 @Composable
@@ -357,11 +412,12 @@ fun HeroCard(day: Countdown, coverStore: CoverStore, onOpen: () -> Unit) {
 
 /** 小角度旋转（手写批注感）。 */
 
-/** 日程时光列表里的单条倒数卡：白卡 + 马卡龙图标圆 + 右侧大号天数。 */
+/** 日程时光列表里的单条倒数卡：置顶行带马卡龙图标圆，普通行纯文字排版。 */
 @Composable
 fun DayRowCard(day: Countdown, coverStore: CoverStore? = null, bookName: String = "", onClick: () -> Unit) {
     val s = LocalSerein.current
     val r = remainingDays(day)
+    val pinned = day.priority == 2
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -371,15 +427,17 @@ fun DayRowCard(day: Countdown, coverStore: CoverStore? = null, bookName: String 
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(13.dp)
+        horizontalArrangement = Arrangement.spacedBy(if (pinned) 13.dp else 0.dp)
     ) {
-        IconCircle(
-            background = bookPastel(bookName),
-            icon = bookIcon(bookName),
-            tint = Ink,
-            size = 48.dp,
-            iconSize = 22.dp
-        )
+        if (pinned) {
+            IconCircle(
+                background = bookPastel(bookName),
+                icon = bookIcon(bookName),
+                tint = Ink,
+                size = 48.dp,
+                iconSize = 22.dp
+            )
+        }
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(

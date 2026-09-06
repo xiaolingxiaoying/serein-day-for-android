@@ -25,11 +25,19 @@ data class Book(val id: String, val name: String)
 /** 列表排序方式（Days Matter 式：置顶始终在最前）。 */
 enum class SortOrder { BY_REMAINING, BY_DATE, BY_CREATED }
 
+/** 小倒数日：挂在某个倒数事件下的子节点（如「报名」「打印准考证」），只记标题与日期。 */
+data class SubDay(
+    val id: String,
+    val title: String,
+    val date: LocalDate
+)
+
 /**
  * 倒数事件。
  * date 为公历锚点日期；lunar=true 表示按其农历月日记忆；repeatYearly=true 表示每年重复。
  * cover 为卡片封面副本文件名；wallpaper 为详情页背景壁纸副本文件名（两者独立）。
  * wallpaperDim 为详情页壁纸压暗遮罩强度（0–0.85），null 表示默认 0.45。
+ * subs 为小倒数日列表。
  */
 data class Countdown(
     val id: String,
@@ -42,6 +50,7 @@ data class Countdown(
     val cover: String? = null,
     val wallpaper: String? = null,
     val wallpaperDim: Float? = null,
+    val subs: List<SubDay> = emptyList(),
     val remind: Boolean = false,
     val priority: Int = 0,
     val archived: Boolean = false,
@@ -69,6 +78,15 @@ class DayRepository(context: Context) {
                 )
             }.toMutableList()
             val createdAt = runCatching { LocalDate.parse(item.optString("createdAt")) }.getOrNull()
+            val subsJson = item.optJSONArray("subs") ?: JSONArray()
+            val subs = List(subsJson.length()) { i ->
+                val sub = subsJson.getJSONObject(i)
+                SubDay(
+                    id = sub.getString("id"),
+                    title = sub.getString("title"),
+                    date = LocalDate.parse(sub.getString("date"))
+                )
+            }
             val legacyNote = item.optString("note", "")
             if (parsedNotes.isEmpty() && legacyNote.isNotEmpty()) {
                 parsedNotes.add(
@@ -97,6 +115,7 @@ class DayRepository(context: Context) {
                 cover = item.optString("cover").takeIf { it.isNotEmpty() },
                 wallpaper = item.optString("wallpaper").takeIf { it.isNotEmpty() },
                 wallpaperDim = item.optDouble("wallpaperDim").takeIf { !it.isNaN() }?.toFloat()?.coerceIn(0f, 0.85f),
+                subs = subs,
                 remind = item.optBoolean("remind"),
                 priority = if (item.optBoolean("pinned")) 2 else item.optInt("priority", 0),
                 archived = item.optBoolean("archived"),
@@ -161,6 +180,14 @@ class DayRepository(context: Context) {
                         note.updatedAt?.let { put("updatedAt", it.toString()) }
                     })
                 }
+                val subs = JSONArray()
+                day.subs.forEach { sub ->
+                    subs.put(JSONObject().apply {
+                        put("id", sub.id)
+                        put("title", sub.title)
+                        put("date", sub.date.toString())
+                    })
+                }
                 array.put(JSONObject().apply {
                     put("id", day.id)
                     put("title", day.title)
@@ -169,6 +196,7 @@ class DayRepository(context: Context) {
                     put("repeat", day.repeatYearly)
                     put("bookId", day.bookId)
                     put("notes", notes)
+                    put("subs", subs)
                     day.cover?.let { put("cover", it) }
                     day.wallpaper?.let { put("wallpaper", it) }
                     day.wallpaperDim?.let { put("wallpaperDim", it.toDouble()) }
@@ -238,9 +266,12 @@ class CoverStore(context: Context) {
 
 val FmtCn = DateTimeFormatter.ofPattern("yyyy年M月d日")
 val FmtDot = DateTimeFormatter.ofPattern("yyyy.MM.dd")
+val FmtIso = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 val FmtNote = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
 fun newCountdownId(): String = UUID.randomUUID().toString()
+
+fun newSubDayId(): String = UUID.randomUUID().toString()
 
 fun weekdayFull(date: LocalDate): String =
     date.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.CHINA)

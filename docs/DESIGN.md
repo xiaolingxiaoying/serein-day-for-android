@@ -8,7 +8,7 @@
 Off-white 背景 + Black Card + Acid Lime + Oversized Typography + Rounded Cards + Line Illustration。
 关键词：Cash App UI · Acid Lime Web Design · Web3 Wallet UI · Refined Neo Brutalism · High Contrast Fintech UI。
 
-**信息架构（v1.5.1）**：无底部导航。品牌头部（Serein Day + 设置圆钮）→ 主菜单栏（倒数本胶囊：全部 / 各倒数本 / 管理 / 归档）→ 黑色 Hero 大卡 → 白卡列表 → 底部青柠 CTA。设置、归档、详情、编辑均为推入页面（iOS push/pop 转场）。
+**信息架构（v1.5.2）**：无底部导航。品牌头部（Serein Day + 倒数本筛选胶囊 + 设置圆钮，副标题「今天是 yyyy-MM-dd 星期X」）→ 黑色 Hero 大卡 → 白卡列表（置顶行带马卡龙图标圆，普通行纯文字）→ 底部青柠 CTA。倒数本筛选为头部胶囊弹层；归档入口在设置页；详情页编辑入口为右上角青柠圆形铅笔钮；每个事件支持挂「小倒数日」子节点。设置、归档、详情、编辑均为推入页面（iOS push/pop 转场）。
 
 ## 1. 设计原则
 
@@ -83,7 +83,7 @@ Off-white 背景 + Black Card + Acid Lime + Oversized Typography + Rounded Cards
 | Hero / 里程碑卡内距 | 22dp |
 | 列表行间距 / 组标题上下距 | 12dp / 8dp |
 | 底部主 CTA | 高 56dp 胶囊，左右 20dp、距底 16dp（避开手势条） |
-| 主菜单栏 | 倒数本胶囊（全部 / 各倒数本 / 管理 / 归档），横滑，位于品牌头部下方；无底部导航，设置经右上角近黑圆钮进入 |
+| 倒数本筛选胶囊 | 头部右侧：FilterAlt 图标 + 当前本名，白底描边胶囊，点开选择弹层（含事件数与管理入口） |
 
 ## 4. 字号标注
 

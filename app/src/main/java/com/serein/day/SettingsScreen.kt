@@ -80,6 +80,7 @@ fun SettingsTab(
     onSortOrderChange: (SortOrder) -> Unit,
     onBackup: () -> Unit,
     onManageBooks: () -> Unit,
+    onOpenArchive: () -> Unit,
     onBack: () -> Unit
 ) {
     val s = LocalSerein.current
@@ -246,6 +247,13 @@ fun SettingsTab(
                 )
                 GroupDivider()
                 SettingsRow(
+                    title = "归档管理",
+                    subtitle = "共 ${days.count { it.archived }} 条封存的倒数日",
+                    trailing = { Chevron() },
+                    onClick = onOpenArchive
+                )
+                GroupDivider()
+                SettingsRow(
                     title = "常驻通知",
                     subtitle = if (pinnedNotif) "已在通知栏显示置顶倒数卡" else "在通知栏常驻显示置顶的倒数卡",
                     trailing = {
@@ -282,7 +290,7 @@ fun SettingsTab(
             SettingsGroup {
                 SettingsRow(
                     title = "关于 Serein Day",
-                    subtitle = "v1.5.1 Acid Lime · Days Matter 式",
+                    subtitle = "v1.5.2 Acid Lime · Days Matter 式",
                     trailing = { Chevron() },
                     onClick = { showAbout = true }
                 )
@@ -325,7 +333,7 @@ fun SettingsTab(
     if (showAbout) {
         IosAlertDialog(
             title = "关于 Serein Day",
-            message = "Serein Day v1.5.1\nAcid Lime 设计系统 · Material 3\n\n一个简约的倒数日应用：Off-white 底 + 黑色大卡 + 荧光青柠，把重要的日子留在眼前。",
+            message = "Serein Day v1.5.2\nAcid Lime 设计系统 · Material 3\n\n一个简约的倒数日应用：Off-white 底 + 黑色大卡 + 荧光青柠，把重要的日子留在眼前。",
             confirmText = "好的",
             dismissText = null,
             onConfirm = { showAbout = false },
