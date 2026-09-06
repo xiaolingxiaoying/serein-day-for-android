@@ -180,8 +180,9 @@ private fun SereinApp(
                     fadeIn(snap()).togetherWith(fadeOut(snap()))
                 } else {
                     // iOS push/pop：进栈新页整幅自右滑入、旧页视差退后；出栈旧页自右滑出、父页归位。
-                    // 临界阻尼弹簧（damping 1.0）保证中途可被打断并继承速度。
-                    val move: SpringSpec<IntOffset> = spring(dampingRatio = 1f, stiffness = 280f)
+                    // 临界阻尼弹簧（damping 1.0）保证中途可被打断并继承速度；刚度 400 让转场更干脆，
+                    // 双屏同绘的窗口更短，弱设备掉帧更少。
+                    val move: SpringSpec<IntOffset> = spring(dampingRatio = 1f, stiffness = 400f)
                     val into = if (forward) slideInHorizontally(move) { it } else slideInHorizontally(move) { -it / 4 }
                     val outOf = if (forward) slideOutHorizontally(move) { -it / 4 } else slideOutHorizontally(move) { it }
                     into.togetherWith(outOf)
@@ -189,10 +190,12 @@ private fun SereinApp(
             },
             label = "screen"
         ) { current ->
-            // 空间一致性：进栈时新页在最上层，出栈时被弹出的页仍在最上层滑走
+            // 空间一致性：进栈时新页在最上层，出栈时被弹出的页仍在最上层滑走。
+            // 每屏自带不透明底色：转场时新旧两页同屏绘制，若靠外层共享 Surface 透底，
+            // 两页内容会叠在一起（设置↔归档转场透字）。
             val pushing = depthOf(screen) > depthOf(current)
             val onTop = if (current == screen) pushing else !pushing
-            Box(Modifier.fillMaxSize().zIndex(if (onTop) 1f else 0f)) {
+            Box(Modifier.fillMaxSize().background(s.surface).zIndex(if (onTop) 1f else 0f)) {
             when (current) {
                 Screen.Editor -> {
                     // 退出转场中 editing 已清空，用缓存快照渲染，滑出页内容保持不变
@@ -334,7 +337,8 @@ private fun SereinApp(
                     days = days,
                     books = books,
                     onBack = { showArchive = false },
-                    onOpen = { detailId = it; showArchive = false },
+                    // 保留归档栈位：详情返回时回到归档页（清掉 showArchive 会跳回设置页）
+                    onOpen = { detailId = it },
                     coverStore = coverStore
                 )
                 Screen.Main -> MainScreen(
