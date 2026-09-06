@@ -7,3 +7,10 @@ local.properties
 *.iml
 .shots/
 .seed/
+.test/
+
+# 参考素材（本地设计参考，不入库）
+cash-design-pack/
+days-matter-snap/
+images/
+stitch_*/

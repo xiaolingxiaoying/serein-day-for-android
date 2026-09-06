@@ -1,7 +1,10 @@
 package com.serein.day
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,20 +30,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Unarchive
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,9 +83,8 @@ fun DetailScreen(
     onWallpaperChange: (String?) -> Unit
 ) {
     val s = LocalSerein.current
-    var expanded by rememberSaveable(day.id) { mutableStateOf(false) }
-    var confirmTwoStepDelete by remember { mutableStateOf(false) }
     var pickingWallpaper by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
     val wallpaperBitmap = rememberCoverBitmap(day.wallpaper, coverStore)
 
     Box(Modifier.fillMaxSize().background(s.surface)) {
@@ -98,11 +100,20 @@ fun DetailScreen(
         }
         Column(Modifier.fillMaxSize()) {
             DetailTopBar(
-                title = if (expanded) "Countdown Detail" else "",
+                title = day.title,
                 onWallpaper = wallpaperBitmap != null,
                 onBack = onBack,
-                trailing = if (!minimalMode && !expanded && !day.archived) {
-                    { Text("编辑", color = s.primary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable { expanded = true }.padding(horizontal = 10.dp, vertical = 6.dp)) }
+                onWallpaperClick = { pickingWallpaper = true },
+                trailing = if (!minimalMode && !day.archived) {
+                    {
+                        Text(
+                            "编辑",
+                            color = if (wallpaperBitmap != null) Color.White else s.primary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { onEditEvent(day) }.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
                 } else null
             )
             if (day.archived) {
@@ -113,93 +124,31 @@ fun DetailScreen(
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 2.dp)
                 )
             }
-            val showExpanded = expanded && !minimalMode
-            when {
-                // 极简模式：单屏，卡片 + 操作
-                minimalMode -> Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    MilestoneCard(day, books, coverStore, minimal = true)
-                    DetailActions(
-                        day = day,
-                        onEdit = { onEditEvent(day) },
-                        onShare = { onShare(day) },
-                        onArchive = { onArchive(day.id) },
-                        onRestore = { onRestore(day.id) },
-                        onDelete = {
-                            if (confirmTwoStepDelete) {
-                                confirmTwoStepDelete = false
-                                onDelete(day.id)
-                            } else {
-                                confirmTwoStepDelete = true
-                            }
-                        },
-                        confirmDelete = confirmTwoStepDelete
-                    )
-                }
-                // 常规模式收起：只看倒数卡
-                !showExpanded -> Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-                    MilestoneCard(day, books, coverStore, minimal = false)
-                }
-                // 常规模式展开：卡片 + 小记 + 操作
-                else -> Column(
-                    Modifier
-                        .fillMaxSize()
-                        .navigationBarsPadding()
-                        .verticalScroll(rememberScrollState())
-                        .padding(start = 16.dp, end = 16.dp, bottom = 32.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    MilestoneCard(day, books, coverStore, minimal = false)
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 20.dp, end = 20.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                MilestoneCard(day, books, coverStore, minimal = minimalMode)
+                if (!minimalMode) {
                     NotesSection(
                         day = day,
                         onPublish = onPublishNote,
                         onEditNote = onEditNote,
                         onDeleteNote = onDeleteNote
                     )
-                    Spacer(Modifier.height(6.dp))
-                    DetailActions(
-                        day = day,
-                        onEdit = { onEditEvent(day) },
-                        onShare = { onShare(day) },
-                        onArchive = { onArchive(day.id) },
-                        onRestore = { onRestore(day.id) },
-                        onDelete = {
-                            if (confirmTwoStepDelete) {
-                                confirmTwoStepDelete = false
-                                onDelete(day.id)
-                            } else {
-                                confirmTwoStepDelete = true
-                            }
-                        },
-                        confirmDelete = confirmTwoStepDelete
-                    )
                 }
-            }
-        }
-        // 换壁纸入口：顶栏下方右侧小圆钮（避开顶栏文字）
-        if (!minimalMode) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .statusBarsPadding()
-                    .padding(top = 62.dp, end = 16.dp)
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(if (wallpaperBitmap != null) Color.White.copy(alpha = 0.85f) else s.container)
-                    .clickable { pickingWallpaper = true },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Outlined.Wallpaper,
-                    contentDescription = "更换详情页背景",
-                    tint = if (wallpaperBitmap != null) Color(0xFF2A322D) else s.primary,
-                    modifier = Modifier.size(19.dp)
+                Spacer(Modifier.height(6.dp))
+                DetailActions(
+                    day = day,
+                    onEdit = { onEditEvent(day) },
+                    onShare = { onShare(day) },
+                    onArchive = { onArchive(day.id) },
+                    onRestore = { onRestore(day.id) },
+                    onDelete = { confirmDelete = true }
                 )
             }
         }
@@ -219,20 +168,34 @@ fun DetailScreen(
             }
         )
     }
+    if (confirmDelete) {
+        IosAlertDialog(
+            title = "彻底删除「${day.title}」？",
+            message = "删除后无法恢复；小记、封面与背景图都会一并移除。",
+            confirmText = "彻底删除",
+            destructive = true,
+            onConfirm = {
+                confirmDelete = false
+                onDelete(day.id)
+            },
+            onDismiss = { confirmDelete = false }
+        )
+    }
 }
 
-/** 详情顶栏：有壁纸时前景改白色保证可读。 */
+/** 详情顶栏：事件名做标题；有壁纸时前景改白色保证可读；壁纸按钮收进顶栏。 */
 @Composable
 private fun DetailTopBar(
     title: String,
     onWallpaper: Boolean,
     onBack: () -> Unit,
+    onWallpaperClick: () -> Unit,
     trailing: (@Composable () -> Unit)?
 ) {
     val s = LocalSerein.current
     val fg = if (onWallpaper) Color.White else s.onSurface
     Row(
-        modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
+        modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 20.dp, top = 12.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
@@ -244,12 +207,36 @@ private fun DetailTopBar(
             )
         }
         Spacer(Modifier.width(6.dp))
-        Text(title, color = fg, fontSize = 23.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Text(
+            title,
+            color = fg,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.3).sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(if (onWallpaper) Color.White.copy(alpha = 0.85f) else s.container)
+                .clickable { onWallpaperClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Outlined.Wallpaper,
+                contentDescription = "更换详情页背景",
+                tint = if (onWallpaper) s.onSurface else s.primary,
+                modifier = Modifier.size(18.dp)
+            )
+        }
         trailing?.invoke()
     }
 }
 
-/** 详情操作区。 */
+/** 详情操作区：青柠主 CTA + 近黑次级胶囊。 */
 @Composable
 private fun DetailActions(
     day: Countdown,
@@ -257,35 +244,34 @@ private fun DetailActions(
     onShare: () -> Unit,
     onArchive: () -> Unit,
     onRestore: () -> Unit,
-    onDelete: () -> Unit,
-    confirmDelete: Boolean
+    onDelete: () -> Unit
 ) {
     val s = LocalSerein.current
     if (!day.archived) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .pressScale(0.97f)
                 .clip(RoundedCornerShape(50))
-                .background(s.primary)
+                .background(s.accent)
                 .clickable { onEdit() }
                 .padding(vertical = 16.dp),
-            contentAlignment = Alignment.Center
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("编辑资料", color = s.onPrimary, fontSize = 15.5.sp, fontWeight = FontWeight.SemiBold)
+            Icon(Icons.Filled.Edit, contentDescription = null, tint = s.onAccent, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("编辑倒数日", color = s.onAccent, fontSize = 15.5.sp, fontWeight = FontWeight.Bold)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SecondaryButton(
                 modifier = Modifier.weight(1f),
-                background = s.secondaryContainer,
-                contentColor = s.onSecondaryContainer,
                 icon = Icons.Outlined.Share,
                 text = "分享卡片",
                 onClick = onShare
             )
             SecondaryButton(
                 modifier = Modifier.weight(1f),
-                background = if (s.isDark) s.container else Color.White,
-                contentColor = s.onSurface,
                 icon = Icons.Outlined.Inventory2,
                 text = "封存",
                 onClick = onArchive
@@ -295,18 +281,15 @@ private fun DetailActions(
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SecondaryButton(
                 modifier = Modifier.weight(1f),
-                background = s.secondaryContainer,
-                contentColor = s.onSecondaryContainer,
                 icon = Icons.Outlined.Unarchive,
                 text = "恢复",
                 onClick = onRestore
             )
             SecondaryButton(
                 modifier = Modifier.weight(1f),
-                background = if (confirmDelete) s.error else if (s.isDark) s.container else Color.White,
-                contentColor = if (confirmDelete) Color.White else s.error,
                 icon = Icons.Filled.Delete,
-                text = if (confirmDelete) "确认删除？" else "彻底删除",
+                text = "彻底删除",
+                contentColor = s.error,
                 onClick = onDelete
             )
         }
@@ -319,47 +302,54 @@ private fun MilestoneCard(day: Countdown, books: List<Book>, coverStore: CoverSt
     val remaining = remainingDays(day)
     val cover = rememberCoverBitmap(day.cover, coverStore)
     val bookName = books.find { it.id == day.bookId }?.name ?: "纪念日"
+    val heroBg = if (s.isDark) Color(0xFF101318) else Ink
 
     if (minimal) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(28.dp))
-                .background(s.container)
-                .padding(20.dp)
+                .clip(RoundedCornerShape(30.dp))
+                .background(heroBg)
+                .padding(22.dp)
         ) {
             Text(
-                day.title,
-                color = s.onSurface,
-                fontSize = 24.sp,
+                "距目标日",
+                color = OnInkMuted,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                letterSpacing = 2.sp
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "${dateText(day)} · ${weekdayFull(targetDate(day))}",
-                color = s.onSurfaceVariant,
-                fontSize = 13.sp
+                day.title,
+                color = OnInk,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.5).sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
+            Spacer(Modifier.height(4.dp))
+            Text("${dateText(day)} · ${weekdayFull(targetDate(day))}", color = OnInkMuted, fontSize = 13.sp)
             Spacer(Modifier.height(14.dp))
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(statusWord(remaining), color = s.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
+                Text(statusWord(remaining), color = OnInkMuted, fontSize = 13.sp, modifier = Modifier.padding(bottom = 10.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
                     abs(remaining).toString(),
-                    color = s.primary,
-                    fontSize = 46.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = (-1).sp
+                    color = s.accent,
+                    fontSize = 52.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-2).sp,
+                    style = TnumStyle
                 )
                 if (remaining != 0L) {
-                    Text(" 天", color = s.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(" 天", color = OnInk, fontSize = 13.sp, modifier = Modifier.padding(bottom = 10.dp))
                 }
             }
             if (day.priority == 2) {
-                Spacer(Modifier.height(10.dp))
-                PillChip("置顶", s.accent, s.onAccentStrong)
+                Spacer(Modifier.height(12.dp))
+                PillChip("置顶", s.accent, s.onAccent)
             }
         }
         return
@@ -368,116 +358,148 @@ private fun MilestoneCard(day: Countdown, books: List<Book>, coverStore: CoverSt
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
-            .background(s.container)
-            .padding(12.dp)
+            .clip(RoundedCornerShape(30.dp))
+            .background(heroBg)
+            .padding(22.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(210.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(heroBrush(bookName))
-        ) {
-            CoverImage(cover, Modifier.fillMaxSize())
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(10.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.White)
-                    .padding(horizontal = 11.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    bookName,
-                    color = s.onAccentStrong,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            PillChip("距离目标日", InkElevated, OnInk, fontSize = 11.5)
+            Spacer(Modifier.weight(1f))
+            Sparkle(Modifier.size(20.dp), color = s.accent)
         }
-        Spacer(Modifier.height(14.dp))
-        Text(
-            if (day.lunar) "农历倒数" else "COUNTDOWN MILESTONE",
-            color = s.onSurfaceVariant,
-            fontSize = 10.5.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.5.sp
-        )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(12.dp))
         Text(
             day.title,
-            color = s.onSurface,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.SemiBold,
+            color = OnInk,
+            fontSize = 27.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.5).sp,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(statusWord(remaining), color = s.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    abs(remaining).toString(),
-                    color = s.primary,
-                    fontSize = 46.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = (-1).sp
+        Spacer(Modifier.height(5.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Outlined.CalendarMonth,
+                contentDescription = null,
+                tint = OnInkMuted,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(Modifier.width(5.dp))
+            Text(
+                "${dateText(day)} · ${weekdayFull(targetDate(day))}",
+                color = OnInkMuted,
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(Modifier.height(18.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            ProgressArc(
+                progress = progressOf(day),
+                size = 128.dp,
+                stroke = 9.dp,
+                track = Color.White.copy(alpha = 0.14f),
+                arcColor = s.accent,
+                textColor = OnInk,
+                centerContent = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(statusWord(remaining), color = OnInkMuted, fontSize = 12.sp)
+                        Text(
+                            abs(remaining).toString(),
+                            color = s.accent,
+                            fontSize = 40.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-1.5).sp,
+                            style = TnumStyle
+                        )
+                        if (remaining != 0L) Text("天", color = OnInkMuted, fontSize = 12.sp)
+                    }
+                }
+            )
+            Spacer(Modifier.weight(1f))
+            if (cover == null) {
+                HeroIllustration(
+                    bookName,
+                    modifier = Modifier.size(width = 138.dp, height = 136.dp),
+                    accent = s.accent
                 )
-                if (remaining != 0L) {
-                    Text(" 天", color = s.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
+            } else {
+                // 有封面时右侧展示圆角封面缩略
+                Box(
+                    Modifier
+                        .size(112.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                ) {
+                    CoverImage(cover, Modifier.fillMaxSize())
                 }
             }
-            Spacer(Modifier.weight(1f))
-            Column(horizontalAlignment = Alignment.End) {
-                Text(targetDate(day).format(FmtDot), color = s.onSurface, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                Text(
-                    "${weekdayFull(targetDate(day))} · ${if (day.repeatYearly) "每年" else "启程"}",
-                    color = s.onSurfaceVariant,
-                    fontSize = 12.sp
-                )
-            }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(16.dp))
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(s.accent)
+                .padding(horizontal = 13.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "目标日：${targetDate(day).format(FmtDot)}（${weekdayShort(targetDate(day))}）",
+                color = s.onAccent,
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(Modifier.height(16.dp))
+        // 里程碑进度内嵌条：黑卡上的深灰内衬
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(if (s.isDark) s.high else Color.White)
+                .clip(RoundedCornerShape(18.dp))
+                .background(InkElevated)
                 .padding(14.dp)
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     if (day.repeatYearly) "每逢此日 · 已陪你走过 ${yearRound(day)} 天" else "已过 ${elapsedSince(day)} 天（起始 ${milestoneStart(day).format(FmtDot)}）",
-                    color = s.onSurfaceVariant,
+                    color = OnInkMuted,
                     fontSize = 12.sp,
                     modifier = Modifier.weight(1f)
                 )
-                Text("${(progressOf(day) * 100).roundToInt()}% 完成", color = s.primary, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
+                Text("${(progressOf(day) * 100).roundToInt()}% 完成", color = s.accent, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(10.dp))
+            // 进度条入场从 0 弹簧展开，与进度环一致
+            var progressPlayed by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) { progressPlayed = true }
+            val fillProgress by animateFloatAsState(
+                targetValue = if (progressPlayed) progressOf(day).coerceIn(0.02f, 1f) else 0f,
+                animationSpec = spring(dampingRatio = 1f, stiffness = 160f),
+                label = "detailProgressFill"
+            )
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(s.highest)
+                    .background(Color.White.copy(alpha = 0.12f))
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(progressOf(day).coerceIn(0.02f, 1f))
+                        .fillMaxWidth(fillProgress)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(50))
-                        .background(s.primary)
+                        .background(s.accent)
                 )
             }
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth()) {
                 val start = if (day.repeatYearly) previousOccurrence(day, targetDate(day)) else milestoneStart(day)
-                Text("起始 ${start.format(FmtDot)}", color = s.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.weight(1f))
-                Text("目标 ${targetDate(day).format(FmtDot)}", color = s.onSurfaceVariant, fontSize = 11.sp)
+                Text("起始 ${start.format(FmtDot)}", color = OnInkMuted, fontSize = 11.sp, modifier = Modifier.weight(1f))
+                Text("目标 ${targetDate(day).format(FmtDot)}", color = OnInkMuted, fontSize = 11.sp)
             }
         }
     }
@@ -497,20 +519,20 @@ private fun NotesSection(
     onDeleteNote: (String) -> Unit
 ) {
     val s = LocalSerein.current
-    var draft by remember { mutableStateOf("") }
-    var editingId by remember { mutableStateOf<String?>(null) }
+    var draft by remember(day.id) { mutableStateOf("") }
+    var editingId by remember(day.id) { mutableStateOf<String?>(null) }
 
     val notes = remember(day.notes) { day.notes.sortedByDescending { it.createdAt } }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(s.container)
             .padding(16.dp)
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("小记", color = s.onSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text("小记", color = s.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
             Text(day.notes.size.toString(), color = s.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
@@ -549,7 +571,7 @@ private fun NotesSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(50))
-                    .background(if (s.isDark) s.high else Color.White)
+                    .background(s.high)
                     .padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -558,7 +580,7 @@ private fun NotesSection(
                     onValueChange = { if (it.length <= 200) draft = it },
                     singleLine = true,
                     textStyle = TextStyle(fontSize = 14.sp, color = s.onSurface),
-                    cursorBrush = SolidColor(s.primary),
+                    cursorBrush = SolidColor(s.onAccentStrong),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
                         if (draft.isNotBlank()) { onPublish(draft); draft = "" }
@@ -566,23 +588,32 @@ private fun NotesSection(
                     modifier = Modifier.weight(1f).padding(vertical = 6.dp),
                     decorationBox = { inner ->
                         Box {
-                            if (draft.isEmpty()) Text("写一条小记…", color = s.outlineVariant, fontSize = 14.sp)
+                            if (draft.isEmpty()) Text("写一条小记…", color = s.onSurfaceVariant, fontSize = 14.sp)
                             inner()
                         }
                     }
                 )
-                Box(
+                Row(
                     modifier = Modifier
-                        .clip(CircleShape)
-                        .background(if (draft.isNotBlank()) s.primary else s.highest)
+                        .clip(RoundedCornerShape(50))
+                        .background(if (draft.isNotBlank()) s.accent else s.highest)
                         .clickable(enabled = draft.isNotBlank()) { onPublish(draft); draft = "" }
                         .padding(horizontal = 14.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Icon(Icons.Filled.Add, contentDescription = null, tint = if (draft.isNotBlank()) s.onPrimary else s.onSurfaceVariant, modifier = Modifier.size(15.dp))
-                        Text("发布", color = if (draft.isNotBlank()) s.onPrimary else s.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    }
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = null,
+                        tint = if (draft.isNotBlank()) s.onAccent else s.onSurfaceVariant,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Text(
+                        "发布",
+                        color = if (draft.isNotBlank()) s.onAccent else s.onSurfaceVariant,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
@@ -602,9 +633,9 @@ private fun NoteRow(note: Note, archived: Boolean, onEdit: () -> Unit, onDelete:
             if (!archived) {
                 Text(
                     "编辑",
-                    color = s.primary,
+                    color = s.onAccentStrong,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .clickable(onClick = onEdit)
@@ -633,7 +664,7 @@ private fun NoteEditRow(initial: String, onSave: (String) -> Unit, onCancel: () 
             value = text,
             onValueChange = { if (it.length <= 200) text = it },
             textStyle = TextStyle(fontSize = 14.sp, color = s.onSurface, lineHeight = 21.sp),
-            cursorBrush = SolidColor(s.primary),
+            cursorBrush = SolidColor(s.onAccentStrong),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(8.dp))
@@ -641,11 +672,11 @@ private fun NoteEditRow(initial: String, onSave: (String) -> Unit, onCancel: () 
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(s.primary)
+                    .background(s.accent)
                     .clickable(enabled = text.isNotBlank()) { onSave(text) }
                     .padding(horizontal = 14.dp, vertical = 6.dp)
             ) {
-                Text("保存", color = s.onPrimary, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
+                Text("保存", color = s.onAccent, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
             }
             Box(
                 modifier = Modifier
@@ -660,19 +691,22 @@ private fun NoteEditRow(initial: String, onSave: (String) -> Unit, onCancel: () 
     }
 }
 
+/** 近黑次级胶囊按钮（分享 / 封存 / 恢复）。 */
 @Composable
 private fun SecondaryButton(
     modifier: Modifier = Modifier,
-    background: Color,
-    contentColor: Color,
+    contentColor: Color = OnInk,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     text: String,
     onClick: () -> Unit
 ) {
+    val s = LocalSerein.current
     Row(
         modifier = modifier
+            .pressScale(0.97f)
             .clip(RoundedCornerShape(50))
-            .background(background)
+            .background(Ink)
+            .then(if (s.isDark) Modifier.border(1.dp, s.outlineVariant, RoundedCornerShape(50)) else Modifier)
             .clickable(onClick = onClick)
             .padding(vertical = 14.dp),
         horizontalArrangement = Arrangement.Center,
@@ -680,6 +714,6 @@ private fun SecondaryButton(
     ) {
         Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(7.dp))
-        Text(text, color = contentColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+        Text(text, color = contentColor, fontSize = 14.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
     }
 }

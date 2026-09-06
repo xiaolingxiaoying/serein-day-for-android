@@ -8,28 +8,26 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -38,12 +36,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import java.time.LocalDateTime
 
 class MainActivity : ComponentActivity() {
@@ -56,8 +52,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             var days by remember { mutableStateOf(repository.load()) }
             var books by remember { mutableStateOf(repository.loadBooks()) }
-            var paletteIndex by remember { mutableIntStateOf(settingsPrefs.getInt("palette", 3).coerceIn(0, CUSTOM_PALETTE_INDEX)) }
-            var customPrimary by remember { mutableIntStateOf(settingsPrefs.getInt("customPrimary", 0xFF006B5B.toInt())) }
+            var paletteIndex by remember { mutableIntStateOf(settingsPrefs.getInt("palette", 0).coerceIn(0, CUSTOM_PALETTE_INDEX)) }
+            var customPrimary by remember { mutableIntStateOf(settingsPrefs.getInt("customPrimary", 0xFFC8F531.toInt())) }
             var modeIndex by remember { mutableIntStateOf(settingsPrefs.getInt("mode", 2).coerceIn(0, 2)) }
             var haptics by remember { mutableStateOf(settingsPrefs.getBoolean("haptics", true)) }
             var pinnedNotif by remember { mutableStateOf(settingsPrefs.getBoolean("pinnedNotif", false)) }
@@ -79,27 +75,29 @@ class MainActivity : ComponentActivity() {
                         PinnedNotification.cancel(context)
                     }
                 }
-                SereinApp(
-                    days = days,
-                    onDaysChange = { days = it; repository.save(it) },
-                    books = books,
-                    onBooksChange = { books = it; repository.saveBooks(it) },
-                    coverStore = coverStore,
-                    paletteIndex = paletteIndex,
-                    onPaletteChange = { paletteIndex = it; settingsPrefs.edit().putInt("palette", it).apply() },
-                    customPrimary = customPrimary,
-                    onCustomPrimaryChange = { customPrimary = it; settingsPrefs.edit().putInt("customPrimary", it).apply() },
-                    modeIndex = modeIndex,
-                    onModeChange = { modeIndex = it; settingsPrefs.edit().putInt("mode", it).apply() },
-                    haptics = haptics,
-                    onHapticsChange = { haptics = it; settingsPrefs.edit().putBoolean("haptics", it).apply() },
-                    pinnedNotif = pinnedNotif,
-                    onPinnedNotifChange = { pinnedNotif = it; settingsPrefs.edit().putBoolean("pinnedNotif", it).apply() },
-                    minimalMode = minimalMode,
-                    onMinimalModeChange = { minimalMode = it; settingsPrefs.edit().putBoolean("minimalMode", it).apply() },
-                    sortOrder = sortOrder,
-                    onSortOrderChange = { sortOrder = it; repository.saveSortOrder(it) }
-                )
+                CompositionLocalProvider(LocalHapticsEnabled provides haptics) {
+                    SereinApp(
+                        days = days,
+                        onDaysChange = { days = it; repository.save(it) },
+                        books = books,
+                        onBooksChange = { books = it; repository.saveBooks(it) },
+                        coverStore = coverStore,
+                        paletteIndex = paletteIndex,
+                        onPaletteChange = { paletteIndex = it; settingsPrefs.edit().putInt("palette", it).apply() },
+                        customPrimary = customPrimary,
+                        onCustomPrimaryChange = { customPrimary = it; settingsPrefs.edit().putInt("customPrimary", it).apply() },
+                        modeIndex = modeIndex,
+                        onModeChange = { modeIndex = it; settingsPrefs.edit().putInt("mode", it).apply() },
+                        haptics = haptics,
+                        onHapticsChange = { haptics = it; settingsPrefs.edit().putBoolean("haptics", it).apply() },
+                        pinnedNotif = pinnedNotif,
+                        onPinnedNotifChange = { pinnedNotif = it; settingsPrefs.edit().putBoolean("pinnedNotif", it).apply() },
+                        minimalMode = minimalMode,
+                        onMinimalModeChange = { minimalMode = it; settingsPrefs.edit().putBoolean("minimalMode", it).apply() },
+                        sortOrder = sortOrder,
+                        onSortOrderChange = { sortOrder = it; repository.saveSortOrder(it) }
+                    )
+                }
             }
         }
     }
@@ -138,6 +136,12 @@ private fun SereinApp(
     var showArchive by remember { mutableStateOf(false) }
 
     val overlayOpen = adding || editing != null
+    // 转场退出期间 detailId / editing 已被清空，但滑出中的页面仍需原内容渲染；
+    // 记住最后的有效值，避免退出页中途闪变成另一页。
+    var lastDetailId by remember { mutableStateOf<String?>(null) }
+    var lastEditorInitial by remember { mutableStateOf<Countdown?>(null) }
+    if (detailId != null) lastDetailId = detailId
+    if (overlayOpen) lastEditorInitial = editing
     BackHandler(enabled = overlayOpen || detailId != null || showArchive) {
         when {
             editing != null -> editing = null
@@ -151,15 +155,58 @@ private fun SereinApp(
         onDaysChange(days.map { if (it.id == id) transform(it) else it })
     }
 
+    /** 页面栈深度：Main(0) → Archive(1) → Detail(2) → Editor(3)，越深越靠顶层。 */
+    fun depthOf(screen: Screen): Int = when (screen) {
+        Screen.Main -> 0
+        Screen.Archive -> 1
+        Screen.Detail -> 2
+        Screen.Editor -> 3
+    }
+    val screen = when {
+        overlayOpen -> Screen.Editor
+        detailId != null && days.any { it.id == detailId } -> Screen.Detail
+        showArchive -> Screen.Archive
+        else -> Screen.Main
+    }
+    val reducedMotion = rememberReducedMotion()
+
     Surface(modifier = Modifier.fillMaxSize(), color = s.surface) {
-        Box(Modifier.fillMaxSize()) {
-            when {
-                overlayOpen -> EditorScreen(
-                    initial = editing,
+        AnimatedContent(
+            targetState = screen,
+            transitionSpec = {
+                val forward = depthOf(targetState) > depthOf(initialState)
+                if (reducedMotion) {
+                    fadeIn(snap()).togetherWith(fadeOut(snap()))
+                } else {
+                    // iOS push/pop：进栈新页整幅自右滑入、旧页视差退后；出栈旧页自右滑出、父页归位。
+                    // 临界阻尼弹簧（damping 1.0）保证中途可被打断并继承速度。
+                    val move: SpringSpec<IntOffset> = spring(dampingRatio = 1f, stiffness = 280f)
+                    val into = if (forward) slideInHorizontally(move) { it } else slideInHorizontally(move) { -it / 4 }
+                    val outOf = if (forward) slideOutHorizontally(move) { -it / 4 } else slideOutHorizontally(move) { it }
+                    into.togetherWith(outOf)
+                }
+            },
+            label = "screen"
+        ) { current ->
+            // 空间一致性：进栈时新页在最上层，出栈时被弹出的页仍在最上层滑走
+            val pushing = depthOf(screen) > depthOf(current)
+            val onTop = if (current == screen) pushing else !pushing
+            Box(Modifier.fillMaxSize().zIndex(if (onTop) 1f else 0f)) {
+            when (current) {
+                Screen.Editor -> {
+                    // 退出转场中 editing 已清空，用缓存快照渲染，滑出页内容保持不变
+                    val editorDay = if (overlayOpen) editing else lastEditorInitial
+                    EditorScreen(
+                        initial = editorDay,
                     books = books,
                     coverStore = coverStore,
                     minimalMode = minimalMode,
-                    onCancel = { adding = false; editing = null },
+                    onCancel = {
+                        // 新建流程取消时清理未落地的草稿图片
+                        if (editing == null) coverStore.removeDrafts()
+                        adding = false
+                        editing = null
+                    },
                     onSave = { updated ->
                         var final = updated
                         if (final.cover?.startsWith("draft.") == true) {
@@ -168,6 +215,7 @@ private fun SereinApp(
                         if (final.wallpaper?.startsWith("draftw.") == true) {
                             final = final.copy(wallpaper = coverStore.renameDraft("${final.id}.w", final.wallpaper!!))
                         }
+                        coverStore.removeDrafts()
                         if (editing == null) {
                             onDaysChange(days + final)
                             Toast.makeText(context, "已保存「${final.title}」", Toast.LENGTH_SHORT).show()
@@ -178,10 +226,11 @@ private fun SereinApp(
                         adding = false
                         editing = null
                     },
-                    onDelete = editing?.let { day ->
+                    onDelete = editorDay?.let { day ->
                         {
                             if (day.cover != null) coverStore.remove(day.cover)
                             if (day.wallpaper != null) coverStore.remove(day.wallpaper)
+                            coverStore.removeDrafts()
                             onDaysChange(days.filterNot { it.id == day.id })
                             editing = null
                             detailId = null
@@ -189,19 +238,11 @@ private fun SereinApp(
                         }
                     }
                 )
-                detailId != null -> {
-                    val detailDay = days.find { it.id == detailId }
-                    if (detailDay == null) {
-                        MainTabs(
-                            days, onDaysChange, books, onBooksChange, coverStore,
-                            tab, { tab = it }, haptics, { adding = true },
-                            selectedBookId, { selectedBookId = it }, { showBookManager = true },
-                            { detailId = it }, { showArchive = true },
-                            paletteIndex, onPaletteChange, customPrimary, onCustomPrimaryChange,
-                            modeIndex, onModeChange, onHapticsChange, pinnedNotif, onPinnedNotifChange,
-                            minimalMode, onMinimalModeChange, sortOrder, onSortOrderChange
-                        )
-                    } else {
+                }
+                Screen.Detail -> {
+                    // 退出转场中 detailId 已清空，用 lastDetailId 找回事件，让滑出页保持原内容
+                    val detailDay = days.find { it.id == (detailId ?: lastDetailId) }
+                    if (detailDay != null) {
                         DetailScreen(
                             day = detailDay,
                             books = books,
@@ -245,16 +286,19 @@ private fun SereinApp(
                                 mutateDay(detailDay.id) { it.copy(wallpaper = name) }
                             }
                         )
+                    } else {
+                        // 事件已被彻底删除、正在退出转场：只保持底色，避免闪现别的页面
+                        Box(Modifier.fillMaxSize().background(s.surface))
                     }
                 }
-                showArchive -> ArchiveScreen(
+                Screen.Archive -> ArchiveScreen(
                     days = days,
                     books = books,
                     onBack = { showArchive = false },
                     onOpen = { detailId = it; showArchive = false },
                     coverStore = coverStore
                 )
-                else -> MainTabs(
+                Screen.Main -> MainTabs(
                     days, onDaysChange, books, onBooksChange, coverStore,
                     tab, { tab = it }, haptics, { adding = true },
                     selectedBookId, { selectedBookId = it }, { showBookManager = true },
@@ -263,19 +307,20 @@ private fun SereinApp(
                     modeIndex, onModeChange, onHapticsChange, pinnedNotif, onPinnedNotifChange,
                     minimalMode, onMinimalModeChange, sortOrder, onSortOrderChange
                 )
+                }
             }
         }
     }
 
     if (showBookManager) {
-        BookManagerDialog(
+        BookManagerSheet(
             books = books,
             days = days,
-            onAdd = { name -> onBooksChange(books + Book(DayRepository.newBookId(), name.trim())) },
-            onRename = { id, name -> onBooksChange(books.map { if (it.id == id) it.copy(name = name.trim()) else it }) },
+            onAdd = { name -> onBooksChange(books + Book(DayRepository.newBookId(), name)) },
+            onRename = { id, name -> onBooksChange(books.map { if (it.id == id) it.copy(name = name) else it }) },
             onDelete = { id ->
                 val remaining = books.filterNot { it.id == id }
-                val fallback = remaining.firstOrNull() ?: return@BookManagerDialog
+                val fallback = remaining.firstOrNull() ?: return@BookManagerSheet
                 onBooksChange(remaining)
                 onDaysChange(days.map { if (it.bookId == id) it.copy(bookId = fallback.id) else it })
             },
@@ -283,6 +328,9 @@ private fun SereinApp(
         )
     }
 }
+
+/** 全屏页面栈标识，用于切换动画的方向判断。 */
+private enum class Screen { Main, Archive, Detail, Editor }
 
 @Composable
 private fun MainTabs(
@@ -314,141 +362,56 @@ private fun MainTabs(
     sortOrder: SortOrder,
     onSortOrderChange: (SortOrder) -> Unit
 ) {
+    val context = LocalContext.current
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
-            when (tab) {
-                0 -> HomeTab(
-                    days = days,
-                    books = books,
-                    selectedBookId = selectedBookId,
-                    onBookSelect = onSelectedBookChange,
-                    onManageBooks = onManageBooks,
-                    onOpen = onOpenDetail,
-                    onOpenArchive = onOpenArchive,
-                    coverStore = coverStore,
-                    minimalMode = minimalMode,
-                    sortOrder = sortOrder
-                )
-                else -> SettingsTab(
-                    days = days,
-                    books = books,
-                    paletteIndex = paletteIndex,
-                    onPaletteChange = onPaletteChange,
-                    customPrimary = customPrimary,
-                    onCustomPrimaryChange = onCustomPrimaryChange,
-                    modeIndex = modeIndex,
-                    onModeChange = onModeChange,
-                    haptics = haptics,
-                    onHapticsChange = onHapticsChange,
-                    pinnedNotif = pinnedNotif,
-                    onPinnedNotifChange = onPinnedNotifChange,
-                    minimalMode = minimalMode,
-                    onMinimalModeChange = onMinimalModeChange,
-                    sortOrder = sortOrder,
-                    onSortOrderChange = onSortOrderChange,
-                    onBackup = { shareText(context = null, title = "Serein Day 备份", text = DayRepository.toJson(days)) },
-                    onManageBooks = onManageBooks
+            Crossfade(targetState = tab, animationSpec = tween(200), label = "tab") { page ->
+                when (page) {
+                    0 -> HomeTab(
+                        days = days,
+                        books = books,
+                        selectedBookId = selectedBookId,
+                        onBookSelect = onSelectedBookChange,
+                        onManageBooks = onManageBooks,
+                        onOpen = onOpenDetail,
+                        onOpenArchive = onOpenArchive,
+                        coverStore = coverStore,
+                        minimalMode = minimalMode,
+                        sortOrder = sortOrder
+                    )
+                    else -> SettingsTab(
+                        days = days,
+                        books = books,
+                        paletteIndex = paletteIndex,
+                        onPaletteChange = onPaletteChange,
+                        customPrimary = customPrimary,
+                        onCustomPrimaryChange = onCustomPrimaryChange,
+                        modeIndex = modeIndex,
+                        onModeChange = onModeChange,
+                        haptics = haptics,
+                        onHapticsChange = onHapticsChange,
+                        pinnedNotif = pinnedNotif,
+                        onPinnedNotifChange = onPinnedNotifChange,
+                        minimalMode = minimalMode,
+                        onMinimalModeChange = onMinimalModeChange,
+                        sortOrder = sortOrder,
+                        onSortOrderChange = onSortOrderChange,
+                        onBackup = { shareText(context, "Serein Day 备份", DayRepository.toJson(days)) },
+                        onManageBooks = onManageBooks
+                    )
+                }
+            }
+            if (tab == 0) {
+                AddPillButton(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                    onClick = onAdd
                 )
             }
-            AddFab(
-                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 20.dp),
-                hapticsEnabled = haptics,
-                onClick = onAdd
-            )
         }
         BottomNavBar(selected = tab, onSelect = onTabChange)
     }
-}
-
-/** 倒数本管理：新建、重命名、删除（删除时事件移入首个剩余倒数本）。 */
-@Composable
-private fun BookManagerDialog(
-    books: List<Book>,
-    days: List<Countdown>,
-    onAdd: (String) -> Unit,
-    onRename: (String, String) -> Unit,
-    onDelete: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val s = LocalSerein.current
-    var editingId by remember { mutableStateOf<String?>(null) }
-    var editName by remember { mutableStateOf("") }
-    var adding by remember { mutableStateOf(false) }
-    var newName by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("管理倒数本") },
-        text = {
-            Column {
-                books.forEach { book ->
-                    val count = days.count { it.bookId == book.id && !it.archived }
-                    if (editingId == book.id) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            androidx.compose.foundation.text.BasicTextField(
-                                value = editName,
-                                onValueChange = { if (it.length <= 12) editName = it },
-                                singleLine = true,
-                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 15.sp, color = s.onSurface),
-                                modifier = Modifier.weight(1f)
-                            )
-                            TextButton(onClick = { if (editName.isNotBlank()) { onRename(book.id, editName); editingId = null } }) { Text("保存", color = s.primary) }
-                            TextButton(onClick = { editingId = null }) { Text("取消") }
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(book.name, color = s.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text("$count 个事件", color = s.onSurfaceVariant, fontSize = 11.5.sp)
-                            }
-                            Icon(
-                                Icons.Filled.Edit,
-                                contentDescription = "重命名",
-                                tint = s.primary,
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .padding(8.dp)
-                                    .clickable { editingId = book.id; editName = book.name }
-                            )
-                            Icon(
-                                Icons.Filled.Delete,
-                                contentDescription = "删除倒数本",
-                                tint = if (books.size > 1) s.error else s.outlineVariant,
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .padding(8.dp)
-                                    .clickable(enabled = books.size > 1) { onDelete(book.id) }
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.size(4.dp))
-                if (adding) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.foundation.text.BasicTextField(
-                            value = newName,
-                            onValueChange = { if (it.length <= 12) newName = it },
-                            singleLine = true,
-                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 15.sp, color = s.onSurface),
-                            modifier = Modifier.weight(1f)
-                        )
-                        TextButton(onClick = { if (newName.isNotBlank()) { onAdd(newName); newName = ""; adding = false } }) { Text("添加", color = s.primary) }
-                        TextButton(onClick = { adding = false }) { Text("取消") }
-                    }
-                } else {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { adding = true }.padding(vertical = 8.dp)) {
-                        Icon(Icons.Filled.Add, contentDescription = null, tint = s.primary, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("新建倒数本", color = s.primary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("完成", color = s.primary) } }
-    )
 }
 
 private fun detailShareText(day: Countdown): String {

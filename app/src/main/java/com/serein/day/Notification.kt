@@ -64,7 +64,7 @@ object PinnedNotification {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_my_calendar)
+            .setSmallIcon(R.drawable.ic_stat_serein)
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(true)

@@ -1,11 +1,17 @@
 package com.serein.day
 
 import android.graphics.BitmapFactory
+import android.provider.Settings
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
@@ -45,23 +52,32 @@ import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -70,22 +86,63 @@ import androidx.compose.ui.unit.sp
 import java.io.File
 import kotlin.math.roundToInt
 
+/** 数字等宽（tnum），大号天数在计时刷新时不会左右跳动。 */
+val TnumStyle = TextStyle(fontFeatureSettings = "tnum")
+
+/** 系统关闭了动画时长（无障碍「移除动画」）时返回 true，动效应降级为即时切换。 */
+@Composable
+fun rememberReducedMotion(): Boolean {
+    val context = LocalContext.current
+    return remember {
+        runCatching {
+            Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+        }.getOrDefault(false)
+    }
+}
+
 /**
- * 极简顶栏：左侧为返回箭头或自定义槽位（如倒数本切换菜单），右侧为可选文字按钮或图标槽位。
+ * 按压缩放：手指按下的瞬间即缩到 pressedScale（iOS 式即时反馈，不等抬起），松开用弹簧弹回。
+ * 弹簧可被打断并从当前值重新出发；系统关闭动画时不缩放，只保留涟漪。
+ */
+fun Modifier.pressScale(pressedScale: Float = 0.97f): Modifier = composed {
+    val reduced = rememberReducedMotion()
+    val pressed = remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (pressed.value && !reduced) pressedScale else 1f,
+        animationSpec = if (pressed.value) spring(dampingRatio = 1f, stiffness = 1600f) else spring(dampingRatio = 1f, stiffness = 480f),
+        label = "pressScale"
+    )
+    this
+        .graphicsLayer { scaleX = scale; scaleY = scale }
+        .pointerInput(Unit) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                pressed.value = true
+                waitForUpOrCancellation()
+                pressed.value = false
+            }
+        }
+}
+
+/**
+ * 顶栏：大标题模式用 Black 超大字号（Oversized Typography），
+ * 左侧为返回箭头或自定义槽位，右侧为可选文字按钮或图标槽位。
  */
 @Composable
 fun TopBar(
     title: String,
+    subtitle: String? = null,
     leadingIcon: ImageVector? = null,
     onLeading: (() -> Unit)? = null,
     leadingSlot: (@Composable () -> Unit)? = null,
     trailingText: String? = null,
     onTrailing: (() -> Unit)? = null,
-    trailingSlot: (@Composable () -> Unit)? = null
+    trailingSlot: (@Composable () -> Unit)? = null,
+    large: Boolean = false
 ) {
     val s = LocalSerein.current
     Row(
-        modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
+        modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (leadingSlot != null || leadingIcon != null) {
@@ -102,15 +159,23 @@ fun TopBar(
                     }
                 }
             }
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(8.dp))
         }
-        Text(
-            title,
-            color = s.onSurface,
-            fontSize = 23.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.weight(1f)
-        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                color = s.onSurface,
+                fontSize = if (large) 32.sp else 20.sp,
+                fontWeight = if (large) FontWeight.Black else FontWeight.Bold,
+                letterSpacing = if (large) (-1.2).sp else (-0.3).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (subtitle != null) {
+                Spacer(Modifier.height(3.dp))
+                Text(subtitle, color = s.onSurfaceVariant, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
         if (trailingSlot != null) {
             trailingSlot()
         } else if (trailingText != null) {
@@ -133,64 +198,107 @@ fun BackTopBar(title: String, onBack: () -> Unit, trailingText: String? = null, 
     TopBar(title = title, leadingIcon = Icons.AutoMirrored.Filled.ArrowBack, onLeading = onBack, trailingText = trailingText, onTrailing = onTrailing)
 }
 
+/** 圆形深色按钮（归档 / 菜单入口）：近黑圆底 + 白色图标，呼应参考稿右上角。 */
+@Composable
+fun InkCircleButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .pressScale(0.9f)
+            .clip(CircleShape)
+            .background(Ink)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = contentDescription, tint = OnInk, modifier = Modifier.size(20.dp))
+    }
+}
+
 @Composable
 fun BottomNavBar(selected: Int, onSelect: (Int) -> Unit) {
     val s = LocalSerein.current
+    val view = LocalView.current
     data class Item(val label: String, val icon: ImageVector, val iconSelected: ImageVector)
     val items = listOf(
         Item("首页", Icons.Outlined.Home, Icons.Filled.Home),
-        Item("设置", Icons.Outlined.Settings, Icons.Filled.Settings)
+        Item("我的", Icons.Outlined.Settings, Icons.Filled.Settings)
     )
-    Row(
-        modifier = Modifier.fillMaxWidth().background(s.surface).navigationBarsPadding().padding(top = 6.dp, bottom = 12.dp)
-    ) {
-        items.forEachIndexed { index, item ->
-            Column(
-                modifier = Modifier.weight(1f).clickable { onSelect(index) },
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(if (selected == index) s.secondaryContainer else Color.Transparent)
-                        .padding(horizontal = 18.dp, vertical = 5.dp)
+    Column(Modifier.fillMaxWidth().background(if (s.isDark) Color(0xFF0A0B0C) else Color.White)) {
+        // 滚动边缘软渐变：内容与底栏的衔接不再是一条生硬细线
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = if (s.isDark) 0.45f else 0.07f)
+                    )
+                )
+        )
+        Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(top = 8.dp, bottom = 12.dp)) {
+            val hapticsOn = LocalHapticsEnabled.current
+            items.forEachIndexed { index, item ->
+                val selectedNow = selected == index
+                Column(
+                    modifier = Modifier.weight(1f).clickable {
+                        if (hapticsOn) view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                        onSelect(index)
+                    },
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Box(Modifier.height(5.dp), contentAlignment = Alignment.Center) {
+                        if (selectedNow) {
+                            Box(Modifier.size(width = 16.dp, height = 4.dp).clip(RoundedCornerShape(50)).background(s.accent))
+                        }
+                    }
+                    Spacer(Modifier.height(3.dp))
                     Icon(
-                        if (selected == index) item.iconSelected else item.icon,
+                        if (selectedNow) item.iconSelected else item.icon,
                         contentDescription = item.label,
-                        tint = if (selected == index) s.onSurface else s.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp)
+                        tint = if (selectedNow) s.onSurface else s.onSurfaceVariant,
+                        modifier = Modifier.size(23.dp)
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        item.label,
+                        fontSize = 11.sp,
+                        fontWeight = if (selectedNow) FontWeight.Bold else FontWeight.Medium,
+                        color = if (selectedNow) s.onSurface else s.onSurfaceVariant
                     )
                 }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    item.label,
-                    fontSize = 11.5.sp,
-                    fontWeight = if (selected == index) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (selected == index) s.onSurface else s.onSurfaceVariant
-                )
             }
         }
     }
 }
 
-/** 圆形新建按钮。 */
+/** 底部主 CTA：整宽青柠胶囊（＋ 添加倒数日），参考稿同款。 */
 @Composable
-fun AddFab(modifier: Modifier = Modifier, hapticsEnabled: Boolean = true, onClick: () -> Unit) {
+fun AddPillButton(
+    modifier: Modifier = Modifier,
+    label: String = "添加倒数日",
+    onClick: () -> Unit
+) {
     val s = LocalSerein.current
     val view = LocalView.current
-    Box(
+    val hapticsOn = LocalHapticsEnabled.current
+    Row(
         modifier = modifier
-            .size(58.dp)
-            .clip(CircleShape)
-            .background(s.primary)
+            .fillMaxWidth()
+            .height(56.dp)
+            .pressScale(0.97f)
+            .clip(RoundedCornerShape(50))
+            .background(s.accent)
             .clickable {
-                if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                if (hapticsOn) view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
                 onClick()
             },
-        contentAlignment = Alignment.Center
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Filled.Edit, contentDescription = "新建倒数日", tint = s.onPrimary, modifier = Modifier.size(22.dp))
+        Icon(Icons.Filled.Add, contentDescription = "新建倒数日", tint = s.onAccent, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label, color = s.onAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -222,12 +330,15 @@ fun PillChip(
 fun SectionBar(title: String, trailing: String) {
     val s = LocalSerein.current
     Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, color = s.onSurface, fontSize = 16.5.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Text(title, color = s.onSurface, fontSize = 16.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         Text(trailing, color = s.onSurfaceVariant, fontSize = 12.5.sp)
     }
 }
 
-/** 圆形里程碑进度环，中心显示百分比。 */
+/**
+ * 圆形里程碑进度环；中心默认显示百分比，也可传入自定义内容
+ * （详情页在环心放「还有 N 天」）。首次进入从 0 展开到当前进度。
+ */
 @Composable
 fun ProgressArc(
     progress: Float,
@@ -235,8 +346,16 @@ fun ProgressArc(
     stroke: Dp = 6.dp,
     track: Color,
     arcColor: Color,
-    textColor: Color
+    textColor: Color,
+    centerContent: (@Composable () -> Unit)? = null
 ) {
+    var played by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { played = true }
+    val animated by animateFloatAsState(
+        targetValue = if (played) progress.coerceIn(0f, 1f) else 0f,
+        animationSpec = spring(dampingRatio = 1f, stiffness = 160f),
+        label = "arcProgress"
+    )
     Box(Modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val strokePx = stroke.toPx()
@@ -244,16 +363,20 @@ fun ProgressArc(
             val arcSize = Size(this.size.width - strokePx, this.size.height - strokePx)
             drawArc(track, 0f, 360f, false, style = Stroke(strokePx, cap = StrokeCap.Round), topLeft = topLeft, size = arcSize)
             drawArc(
-                arcColor, -90f, 360f * progress.coerceIn(0f, 1f), false,
+                arcColor, -90f, 360f * animated, false,
                 style = Stroke(strokePx, cap = StrokeCap.Round), topLeft = topLeft, size = arcSize
             )
         }
-        Text(
-            "${(progress.coerceIn(0f, 1f) * 100).roundToInt()}%",
-            fontSize = 11.5.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = textColor
-        )
+        if (centerContent != null) {
+            centerContent()
+        } else {
+            Text(
+                "${(progress.coerceIn(0f, 1f) * 100).roundToInt()}%",
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = textColor
+            )
+        }
     }
 }
 
@@ -264,21 +387,177 @@ fun IconCircle(background: Color, icon: ImageVector, tint: Color, size: Dp = 46.
     }
 }
 
-fun categoryIcon(category: String): ImageVector = when (category) {
-    "旅行" -> Icons.Outlined.FlightTakeoff
-    "生日" -> Icons.Outlined.Cake
-    "考试" -> Icons.Outlined.School
+fun categoryIcon(category: String): ImageVector = when {
+    category.contains("旅行") -> Icons.Outlined.FlightTakeoff
+    category.contains("生日") -> Icons.Outlined.Cake
+    category.contains("考试") || category.contains("学习") -> Icons.Outlined.School
     else -> Icons.Outlined.FavoriteBorder
 }
 
 fun bookIcon(name: String): ImageVector = categoryIcon(name)
 
-/** 分类对应的柔和风景渐变（未设置封面时的卡片底图）。 */
-fun heroBrush(bookName: String): Brush = when (bookName) {
-    "旅行" -> Brush.verticalGradient(listOf(Color(0xFFD9CBE8), Color(0xFFF3DFD2), Color(0xFFDCEBE3)))
-    "生日" -> Brush.verticalGradient(listOf(Color(0xFFF6DCC3), Color(0xFFFBEFE2), Color(0xFFEFE0D8)))
-    "考试" -> Brush.verticalGradient(listOf(Color(0xFFCFE0F0), Color(0xFFE4EEF4), Color(0xFFDDEBE2)))
-    else -> Brush.verticalGradient(listOf(Color(0xFFD6DFF0), Color(0xFFEAE0DC), Color(0xFFDDEBE3)))
+/** 类别对应的马卡龙底色（图标圆）：底色低饱和、图标用近黑墨色。 */
+fun bookPastel(name: String): Color = when {
+    name.contains("旅行") -> PastelLavender
+    name.contains("生日") -> PastelButter
+    name.contains("考试") || name.contains("学习") -> PastelSky
+    name.contains("纪念") -> PastelBlush
+    else -> PastelMint
+}
+
+/** 四角星装饰（参考稿中的 ✦ 荧光星）。 */
+@Composable
+fun Sparkle(modifier: Modifier = Modifier, color: Color = AcidLime) {
+    Canvas(modifier) { drawSparkle(center.x, center.y, size.minDimension / 2f, color, filled = true) }
+}
+
+/** 四角星路径：菱形轮廓 + 向内收的四段贝塞尔，读作「闪光」。 */
+private fun DrawScope.drawSparkle(cx: Float, cy: Float, r: Float, color: Color, filled: Boolean) {
+    val path = Path().apply {
+        moveTo(cx, cy - r)
+        quadraticBezierTo(cx + r * 0.14f, cy - r * 0.14f, cx + r, cy)
+        quadraticBezierTo(cx + r * 0.14f, cy + r * 0.14f, cx, cy + r)
+        quadraticBezierTo(cx - r * 0.14f, cy + r * 0.14f, cx - r, cy)
+        quadraticBezierTo(cx - r * 0.14f, cy - r * 0.14f, cx, cy - r)
+        close()
+    }
+    if (filled) drawPath(path, color) else drawPath(path, color, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+}
+
+/**
+ * 黑色大卡上的白色线稿插画（Line Illustration），按倒数本类别绘制：
+ * 旅行 = 行李箱 + 虚线航线；生日 = 蛋糕；考试/学习 = 台灯 + 书堆 + 咖啡；
+ * 默认 = 日历页 + 荧光星。青柠 accent 只做小面积点睛（灯锥、火苗、星）。
+ */
+@Composable
+fun HeroIllustration(
+    bookName: String,
+    modifier: Modifier = Modifier,
+    stroke: Color = Color(0xFFE9EBEE),
+    accent: Color = AcidLime
+) {
+    Canvas(modifier) {
+        val sw = 2.4.dp.toPx()
+        when {
+            bookName.contains("旅行") -> drawTravelArt(sw, stroke, accent)
+            bookName.contains("生日") -> drawCakeArt(sw, stroke, accent)
+            bookName.contains("考试") || bookName.contains("学习") -> drawStudyArt(sw, stroke, accent)
+            else -> drawCalendarArt(sw, stroke, accent)
+        }
+    }
+}
+
+/** 旅行：虚线航线 + 小星，行李箱（拉杆、竖条纹、轮子、青柠行李牌）。 */
+private fun DrawScope.drawTravelArt(sw: Float, stroke: Color, accent: Color) {
+    val w = size.width; val h = size.height
+    // 虚线航线
+    val dash = Stroke(width = sw * 0.8f, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(sw * 2.6f, sw * 2.2f)))
+    val flight = Path().apply {
+        moveTo(w * 0.06f, h * 0.20f)
+        cubicTo(w * 0.30f, h * 0.02f, w * 0.56f, h * 0.06f, w * 0.72f, h * 0.16f)
+    }
+    drawPath(flight, stroke, style = dash)
+    drawSparkle(w * 0.80f, h * 0.13f, w * 0.055f, accent, filled = true)
+    drawCircle(stroke, radius = w * 0.025f, center = Offset(w * 0.50f, h * 0.10f), style = Stroke(sw * 0.8f))
+    // 拉杆
+    val hx = w * 0.46f
+    drawLine(stroke, Offset(hx - w * 0.10f, h * 0.36f), Offset(hx - w * 0.10f, h * 0.16f), sw, StrokeCap.Round)
+    drawLine(stroke, Offset(hx + w * 0.10f, h * 0.36f), Offset(hx + w * 0.10f, h * 0.16f), sw, StrokeCap.Round)
+    drawRoundRect(stroke, Offset(hx - w * 0.16f, h * 0.10f), Size(w * 0.32f, h * 0.075f), CornerRadius(w * 0.035f), style = Stroke(sw))
+    // 箱体
+    val left = w * 0.16f; val top = h * 0.36f; val right = w * 0.80f; val bottom = h * 0.84f
+    drawRoundRect(stroke, Offset(left, top), Size(right - left, bottom - top), CornerRadius(w * 0.06f), style = Stroke(sw))
+    for (i in 1..2) {
+        val lx = left + (right - left) * i / 3f
+        drawLine(stroke, Offset(lx, top + sw * 1.6f), Offset(lx, bottom - sw * 1.6f), sw * 0.8f)
+    }
+    // 轮子
+    drawCircle(stroke, radius = w * 0.045f, center = Offset(left + w * 0.11f, bottom + w * 0.055f), style = Stroke(sw))
+    drawCircle(stroke, radius = w * 0.045f, center = Offset(right - w * 0.11f, bottom + w * 0.055f), style = Stroke(sw))
+    // 挂绳 + 行李牌
+    drawLine(stroke, Offset(right - w * 0.14f, top + sw), Offset(right - w * 0.10f, top - h * 0.07f), sw * 0.8f, StrokeCap.Round)
+    drawRoundRect(accent, Offset(right - w * 0.20f, top - h * 0.16f), Size(w * 0.13f, h * 0.10f), CornerRadius(w * 0.025f), style = Stroke(sw))
+}
+
+/** 生日：双层蛋糕 + 蜡烛青柠火苗 + 纸杯纹。 */
+private fun DrawScope.drawCakeArt(sw: Float, stroke: Color, accent: Color) {
+    val w = size.width; val h = size.height
+    drawSparkle(w * 0.16f, h * 0.14f, w * 0.05f, stroke, filled = false)
+    drawSparkle(w * 0.84f, h * 0.20f, w * 0.04f, accent, filled = true)
+    // 底盘
+    drawLine(stroke, Offset(w * 0.12f, h * 0.84f), Offset(w * 0.88f, h * 0.84f), sw, StrokeCap.Round)
+    // 下层
+    drawRoundRect(stroke, Offset(w * 0.20f, h * 0.56f), Size(w * 0.60f, h * 0.28f), CornerRadius(w * 0.03f), style = Stroke(sw))
+    // 上层
+    drawRoundRect(stroke, Offset(w * 0.30f, h * 0.34f), Size(w * 0.40f, h * 0.22f), CornerRadius(w * 0.03f), style = Stroke(sw))
+    // 蜡烛 + 火苗
+    drawLine(stroke, Offset(w * 0.50f, h * 0.34f), Offset(w * 0.50f, h * 0.22f), sw, StrokeCap.Round)
+    drawSparkle(w * 0.50f, h * 0.15f, w * 0.055f, accent, filled = true)
+    // 纸杯纹与糖霜点
+    for (i in 1..2) {
+        val lx = w * (0.20f + 0.20f * i)
+        drawLine(stroke, Offset(lx, h * 0.60f), Offset(lx, h * 0.80f), sw * 0.8f)
+    }
+    drawCircle(accent, radius = w * 0.02f, center = Offset(w * 0.38f, h * 0.45f))
+    drawCircle(accent, radius = w * 0.02f, center = Offset(w * 0.62f, h * 0.45f))
+}
+
+/** 考试/学习：台灯（青柠灯锥）+ 书堆 + 冒热气的咖啡杯。 */
+private fun DrawScope.drawStudyArt(sw: Float, stroke: Color, accent: Color) {
+    val w = size.width; val h = size.height
+    // 灯锥（青柠低透明填充）在灯罩下层
+    val cone = Path().apply {
+        moveTo(w * 0.62f, h * 0.24f)
+        lineTo(w * 0.96f, h * 0.62f)
+        lineTo(w * 0.50f, h * 0.62f)
+        close()
+    }
+    drawPath(cone, accent.copy(alpha = 0.16f))
+    // 灯罩
+    val shade = Path().apply {
+        moveTo(w * 0.52f, h * 0.24f)
+        lineTo(w * 0.72f, h * 0.24f)
+        lineTo(w * 0.78f, h * 0.36f)
+        lineTo(w * 0.46f, h * 0.36f)
+        close()
+    }
+    drawPath(shade, stroke, style = Stroke(sw, cap = StrokeCap.Round))
+    // 灯臂两段 + 底座
+    drawLine(stroke, Offset(w * 0.58f, h * 0.24f), Offset(w * 0.44f, h * 0.12f), sw, StrokeCap.Round)
+    drawLine(stroke, Offset(w * 0.44f, h * 0.12f), Offset(w * 0.22f, h * 0.30f), sw, StrokeCap.Round)
+    drawLine(stroke, Offset(w * 0.22f, h * 0.30f), Offset(w * 0.22f, h * 0.44f), sw, StrokeCap.Round)
+    drawRoundRect(stroke, Offset(w * 0.10f, h * 0.44f), Size(w * 0.24f, h * 0.05f), CornerRadius(w * 0.02f), style = Stroke(sw))
+    // 书堆两本
+    drawRoundRect(stroke, Offset(w * 0.16f, h * 0.66f), Size(w * 0.42f, h * 0.10f), CornerRadius(w * 0.02f), style = Stroke(sw))
+    drawRoundRect(stroke, Offset(w * 0.20f, h * 0.56f), Size(w * 0.36f, h * 0.10f), CornerRadius(w * 0.02f), style = Stroke(sw))
+    drawLine(stroke, Offset(w * 0.22f, h * 0.71f), Offset(w * 0.34f, h * 0.71f), sw * 0.7f)
+    // 咖啡杯 + 把手 + 热气
+    drawRoundRect(stroke, Offset(w * 0.68f, h * 0.54f), Size(w * 0.20f, h * 0.22f), CornerRadius(w * 0.03f), style = Stroke(sw))
+    drawArc(stroke, -60f, 200f, false, style = Stroke(sw * 0.9f, cap = StrokeCap.Round),
+        topLeft = Offset(w * 0.86f, h * 0.58f), size = Size(w * 0.10f, h * 0.12f))
+    val steam = Path().apply {
+        moveTo(w * 0.75f, h * 0.48f)
+        cubicTo(w * 0.72f, h * 0.43f, w * 0.78f, h * 0.40f, w * 0.75f, h * 0.34f)
+    }
+    drawPath(steam, stroke, style = Stroke(sw * 0.8f, cap = StrokeCap.Round))
+    drawSparkle(w * 0.16f, h * 0.16f, w * 0.05f, accent, filled = true)
+}
+
+/** 默认（纪念日/节日）：日历页 + 两枚装订环 + 页面中央青柠星。 */
+private fun DrawScope.drawCalendarArt(sw: Float, stroke: Color, accent: Color) {
+    val w = size.width; val h = size.height
+    drawSparkle(w * 0.14f, h * 0.18f, w * 0.045f, accent, filled = true)
+    drawSparkle(w * 0.88f, h * 0.30f, w * 0.035f, stroke, filled = false)
+    drawRoundRect(stroke, Offset(w * 0.22f, h * 0.22f), Size(w * 0.56f, h * 0.58f), CornerRadius(w * 0.05f), style = Stroke(sw))
+    drawLine(stroke, Offset(w * 0.22f, h * 0.38f), Offset(w * 0.78f, h * 0.38f), sw)
+    // 装订环
+    drawLine(stroke, Offset(w * 0.36f, h * 0.13f), Offset(w * 0.36f, h * 0.28f), sw, StrokeCap.Round)
+    drawLine(stroke, Offset(w * 0.64f, h * 0.13f), Offset(w * 0.64f, h * 0.28f), sw, StrokeCap.Round)
+    // 页面里的星与刻度
+    drawSparkle(w * 0.50f, h * 0.55f, w * 0.085f, accent, filled = true)
+    drawCircle(stroke, radius = w * 0.016f, center = Offset(w * 0.34f, h * 0.48f), style = Stroke(sw * 0.8f))
+    drawCircle(stroke, radius = w * 0.016f, center = Offset(w * 0.66f, h * 0.48f), style = Stroke(sw * 0.8f))
+    drawLine(stroke, Offset(w * 0.34f, h * 0.68f), Offset(w * 0.66f, h * 0.68f), sw * 0.7f)
 }
 
 /** 加载封面副本文件为位图（解码到目标宽度以内，避免整图内存）。 */
@@ -315,22 +594,6 @@ fun NoteBadge(count: Int, tint: Color) {
 }
 
 @Composable
-fun EmptyHome() {
-    val s = LocalSerein.current
-    Column(
-        modifier = Modifier.fillMaxSize().padding(bottom = 60.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        IconCircle(s.container, Icons.Outlined.Spa, s.onAccentStrong, size = 84.dp, iconSize = 36.dp)
-        Spacer(Modifier.height(18.dp))
-        Text("还没有倒数日", color = s.onSurface, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(8.dp))
-        Text("点右下角 +，温柔记下第一个重要时刻", color = s.onSurfaceVariant, fontSize = 13.5.sp)
-    }
-}
-
-@Composable
 fun EmptyArchive() {
     val s = LocalSerein.current
     Column(
@@ -338,9 +601,12 @@ fun EmptyArchive() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        IconCircle(s.container, Icons.Outlined.Inventory2, s.onAccentStrong, size = 84.dp, iconSize = 32.dp)
+        Box(contentAlignment = Alignment.Center) {
+            Sparkle(Modifier.size(84.dp), color = s.accent.copy(alpha = 0.9f))
+            Icon(Icons.Outlined.Inventory2, contentDescription = null, tint = s.onSurface, modifier = Modifier.size(30.dp))
+        }
         Spacer(Modifier.height(18.dp))
-        Text("还没有归档的倒数日", color = s.onSurface, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+        Text("还没有归档的倒数日", color = s.onSurface, fontSize = 19.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         Text("在详情里选择「封存」，即可归档到这里", color = s.onSurfaceVariant, fontSize = 13.5.sp)
     }

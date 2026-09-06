@@ -225,6 +225,11 @@ class CoverStore(context: Context) {
         if (File(dir, draftName).renameTo(File(dir, target))) return target
         return draftName
     }
+
+    /** 清理编辑流程遗留的草稿图片（取消、保存后或删除后调用）。 */
+    fun removeDrafts() {
+        dir.listFiles { f -> f.name.startsWith("draft.") || f.name.startsWith("draftw.") }?.forEach { it.delete() }
+    }
 }
 
 val FmtCn = DateTimeFormatter.ofPattern("yyyy年M月d日")

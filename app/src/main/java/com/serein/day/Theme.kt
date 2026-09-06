@@ -11,12 +11,18 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-/** Serene Forest Mint 设计系统（stitch_serein_day_countdown(1)）的调色板。 */
+/**
+ * Acid Lime 设计系统（标注详见 docs/DESIGN.md）：
+ * 高对比 Web3 / FinTech × 轻 Neo-Brutalism。
+ * 浅色：Off-white 底 + 纯白卡片 + 近黑墨色；深色：纯黑底 + 炭灰卡片。
+ * 唯一的高饱和变量是「荧光青柠」accent，承担 CTA、大号天数、进度等全部能量语义；
+ * primary 为墨色（深色下翻转银白），只做静态强调：标题、选中态、列表大数字。
+ */
 data class SereinPalette(
     val name: String,
     val surface: Color,
@@ -38,245 +44,97 @@ data class SereinPalette(
     val isDark: Boolean = false
 )
 
-// 跨调色板共享的庆祝色（蜜棕 / 蜜桃，用于生日卡与徽章）
-val Honey = Color(0xFF845400)
-val OnHoney = Color(0xFFFFD198)
-val Peach = Color(0xFFFFDDB6)
-val OnPeach = Color(0xFF2A1800)
-val SunBadge = Color(0xFFFBBA65)
+/** 黑色大卡（Hero / 详情里程碑卡）在两套主题下共用的墨色阶梯。 */
+val Ink = Color(0xFF0E1116)
+val InkElevated = Color(0xFF171B21)
+val OnInk = Color(0xFFF4F5F7)
+val OnInkMuted = Color(0xFF9AA1AB)
 
-private val forestMintLight = SereinPalette(
-    name = "灰绿",
-    surface = Color(0xFFF3FCF4), surfaceLow = Color(0xFFEDF6EE),
-    container = Color(0xFFE7F0E9), high = Color(0xFFE1EAE3), highest = Color(0xFFDCE5DD),
-    onSurface = Color(0xFF151D19), onSurfaceVariant = Color(0xFF3E4946), outlineVariant = Color(0xFFBEC9C4),
-    primary = Color(0xFF006B5B), onPrimary = Color.White,
-    accent = Color(0xFF9FF2DE), onAccent = Color(0xFF00201A), onAccentStrong = Color(0xFF005144),
-    secondaryContainer = Color(0xFFCCE6D9), onSecondaryContainer = Color(0xFF354B42),
-    error = Color(0xFFBA1A1A)
+/** 类别彩色底衬（图标圆 / 徽标）：低饱和马卡龙底 + 近黑图标，呼应参考稿。 */
+val PastelLavender = Color(0xFFE6DFFF)
+val PastelButter = Color(0xFFFFE7AD)
+val PastelMint = Color(0xFFCDEFD2)
+val PastelSky = Color(0xFFD3E6FF)
+val PastelBlush = Color(0xFFFFDCD4)
+
+/** 酸性青柠：全系统默认点缀色。 */
+val AcidLime = Color(0xFFC8F531)
+val OnAcid = Color(0xFF101405)
+
+/** 浅色共用中性底：Off-white 阶梯。accent 需自带 onAccent / onAccentStrong。 */
+private fun neonLight(name: String, accent: Color, onAccent: Color, accentStrong: Color) = SereinPalette(
+    name = name,
+    surface = Color(0xFFF1F2F4), surfaceLow = Color(0xFFEBEDEF),
+    container = Color(0xFFFFFFFF), high = Color(0xFFF3F4F6), highest = Color(0xFFE8EAED),
+    onSurface = Color(0xFF0D0F12), onSurfaceVariant = Color(0xFF767B84), outlineVariant = Color(0xFFE2E4E8),
+    primary = Color(0xFF0D0F12), onPrimary = Color.White,
+    accent = accent, onAccent = onAccent, onAccentStrong = accentStrong,
+    secondaryContainer = Color(0xFFF0F1F3), onSecondaryContainer = Color(0xFF3A3E45),
+    error = Color(0xFFE5484D)
 )
 
-private val forestMintDark = SereinPalette(
-    name = "灰绿",
-    surface = Color(0xFF0F1512), surfaceLow = Color(0xFF131A16),
-    container = Color(0xFF18201B), high = Color(0xFF1E2620), highest = Color(0xFF242C26),
-    onSurface = Color(0xFFE1E7E2), onSurfaceVariant = Color(0xFFA9B4AC), outlineVariant = Color(0xFF3A423D),
-    primary = Color(0xFF83D6C2), onPrimary = Color(0xFF00201A),
-    accent = Color(0xFF9FF2DE), onAccent = Color(0xFF00201A), onAccentStrong = Color(0xFF005144),
-    secondaryContainer = Color(0xFF2B3A34), onSecondaryContainer = Color(0xFFCBE6D8),
-    error = Color(0xFFFFB4AB), isDark = true
+/** 深色共用中性底：纯黑阶梯，primary 翻转为银白。 */
+private fun neonDark(name: String, accent: Color, onAccent: Color = OnAcid) = SereinPalette(
+    name = name,
+    surface = Color(0xFF050506), surfaceLow = Color(0xFF0C0D0F),
+    container = Color(0xFF15171B), high = Color(0xFF1C1F24), highest = Color(0xFF24272D),
+    onSurface = Color(0xFFF1F2F4), onSurfaceVariant = Color(0xFF9AA0A8), outlineVariant = Color(0xFF2B2F35),
+    primary = Color(0xFFF1F2F4), onPrimary = Color(0xFF0D0F12),
+    accent = accent, onAccent = onAccent, onAccentStrong = accent,
+    secondaryContainer = Color(0xFF22252B), onSecondaryContainer = Color(0xFFE4E6EA),
+    error = Color(0xFFFF6B6E), isDark = true
 )
 
-private val softPurpleLight = SereinPalette(
-    name = "柔紫",
-    surface = Color(0xFFF8F4FC), surfaceLow = Color(0xFFF4EFF9),
-    container = Color(0xFFF0E9F6), high = Color(0xFFEAE2F1), highest = Color(0xFFE4DCEC),
-    onSurface = Color(0xFF1B1822), onSurfaceVariant = Color(0xFF474251), outlineVariant = Color(0xFFCDC5D5),
-    primary = Color(0xFF6750A4), onPrimary = Color.White,
-    accent = Color(0xFFE9DDFF), onAccent = Color(0xFF22005D), onAccentStrong = Color(0xFF4F378A),
-    secondaryContainer = Color(0xFFE8DEF9), onSecondaryContainer = Color(0xFF4A4358),
-    error = Color(0xFFBA1A1A)
-)
+private val limeLight = neonLight("青柠", AcidLime, OnAcid, Color(0xFF7FA30A))
+private val limeDark = neonDark("青柠", Color(0xFFCDF64A))
 
-private val softPurpleDark = SereinPalette(
-    name = "柔紫",
-    surface = Color(0xFF131118), surfaceLow = Color(0xFF17151E),
-    container = Color(0xFF1D1A25), high = Color(0xFF232030), highest = Color(0xFF292537),
-    onSurface = Color(0xFFE4E0EC), onSurfaceVariant = Color(0xFFAFA9C0), outlineVariant = Color(0xFF3B3648),
-    primary = Color(0xFFCFBCFF), onPrimary = Color(0xFF22005D),
-    accent = Color(0xFFE9DDFF), onAccent = Color(0xFF22005D), onAccentStrong = Color(0xFF4F378A),
-    secondaryContainer = Color(0xFF322C4A), onSecondaryContainer = Color(0xFFDFD6F7),
-    error = Color(0xFFFFB4AB), isDark = true
-)
+private val greenLight = neonLight("荧光绿", Color(0xFF00E013), Color(0xFF002B05), Color(0xFF00A50E))
+private val greenDark = neonDark("荧光绿", Color(0xFF2AEF3C))
 
-private val ochreLight = SereinPalette(
-    name = "赭红",
-    surface = Color(0xFFFCF4F1), surfaceLow = Color(0xFFF8F0EB),
-    container = Color(0xFFF4E9E2), high = Color(0xFFEFDFD5), highest = Color(0xFFE9D8CD),
-    onSurface = Color(0xFF201A17), onSurfaceVariant = Color(0xFF4D443E), outlineVariant = Color(0xFFD8C7BB),
-    primary = Color(0xFF8C4433), onPrimary = Color.White,
-    accent = Color(0xFFFFDBD1), onAccent = Color(0xFF3A0B01), onAccentStrong = Color(0xFF5D2A18),
-    secondaryContainer = Color(0xFFF2DED6), onSecondaryContainer = Color(0xFF4A3B32),
-    error = Color(0xFFBA1A1A)
-)
+private val violetLight = neonLight("电光紫", Color(0xFF8B5CF6), Color.White, Color(0xFF6D3FD8))
+private val violetDark = neonDark("电光紫", Color(0xFFA78BFA), Color(0xFF1B1040))
 
-private val ochreDark = SereinPalette(
-    name = "赭红",
-    surface = Color(0xFF171210), surfaceLow = Color(0xFF1B1613),
-    container = Color(0xFF211B17), high = Color(0xFF27201B), highest = Color(0xFF2D251F),
-    onSurface = Color(0xFFEDE3DC), onSurfaceVariant = Color(0xFFB4A69C), outlineVariant = Color(0xFF453830),
-    primary = Color(0xFFFFB5A5), onPrimary = Color(0xFF3A0B01),
-    accent = Color(0xFFFFDBD1), onAccent = Color(0xFF3A0B01), onAccentStrong = Color(0xFF5D2A18),
-    secondaryContainer = Color(0xFF3A2C25), onSecondaryContainer = Color(0xFFF2D9CE),
-    error = Color(0xFFFFB4AB), isDark = true
-)
+private val blueLight = neonLight("电光蓝", Color(0xFF3D6BFF), Color.White, Color(0xFF2C4FD1))
+private val blueDark = neonDark("电光蓝", Color(0xFF7C93FF), Color(0xFF0B1740))
 
-private val indigoLight = SereinPalette(
-    name = "靛蓝",
-    surface = Color(0xFFF2F5FC), surfaceLow = Color(0xFFEDF1FA),
-    container = Color(0xFFE8EDF7), high = Color(0xFFE1E7F3), highest = Color(0xFFDBE1EF),
-    onSurface = Color(0xFF181C24), onSurfaceVariant = Color(0xFF434956), outlineVariant = Color(0xFFC9CEDC),
-    primary = Color(0xFF3B5599), onPrimary = Color.White,
-    accent = Color(0xFFD6E2FF), onAccent = Color(0xFF002159), onAccentStrong = Color(0xFF2C4484),
-    secondaryContainer = Color(0xFFD9E2F8), onSecondaryContainer = Color(0xFF3D465C),
-    error = Color(0xFFBA1A1A)
-)
+private val orangeLight = neonLight("橙焰", Color(0xFFFF8A00), Color(0xFF2B1500), Color(0xFFD06F00))
+private val orangeDark = neonDark("橙焰", Color(0xFFFFA133), Color(0xFF2B1500))
 
-private val indigoDark = SereinPalette(
-    name = "靛蓝",
-    surface = Color(0xFF11131A), surfaceLow = Color(0xFF151821),
-    container = Color(0xFF1A1E29), high = Color(0xFF20242F), highest = Color(0xFF262A37),
-    onSurface = Color(0xFFE2E5EE), onSurfaceVariant = Color(0xFFA8AEBF), outlineVariant = Color(0xFF383D4C),
-    primary = Color(0xFFB3C5FF), onPrimary = Color(0xFF002159),
-    accent = Color(0xFFD6E2FF), onAccent = Color(0xFF002159), onAccentStrong = Color(0xFF2C4484),
-    secondaryContainer = Color(0xFF2C3348), onSecondaryContainer = Color(0xFFD6E0F8),
-    error = Color(0xFFFFB4AB), isDark = true
-)
+private val magentaLight = neonLight("品红", Color(0xFFF0509A), Color.White, Color(0xFFC93278))
+private val magentaDark = neonDark("品红", Color(0xFFFF7CB4), Color(0xFF3D0A22))
 
-private val amberLight = SereinPalette(
-    name = "蜜橙",
-    surface = Color(0xFFFFF8F0), surfaceLow = Color(0xFFFDF3E7),
-    container = Color(0xFFF9EDDE), high = Color(0xFFF3E7D7), highest = Color(0xFFEDE1D0),
-    onSurface = Color(0xFF201B12), onSurfaceVariant = Color(0xFF4F4639), outlineVariant = Color(0xFFDBD0C0),
-    primary = Color(0xFF8B5A00), onPrimary = Color.White,
-    accent = Color(0xFFFFDEA8), onAccent = Color(0xFF2B1700), onAccentStrong = Color(0xFF7A4F00),
-    secondaryContainer = Color(0xFFF2E1C8), onSecondaryContainer = Color(0xFF4F4232),
-    error = Color(0xFFBA1A1A)
-)
+private val tealLight = neonLight("青碧", Color(0xFF12B8A5), Color(0xFF00201C), Color(0xFF0C9080))
+private val tealDark = neonDark("青碧", Color(0xFF3BDCC9))
 
-private val amberDark = SereinPalette(
-    name = "蜜橙",
-    surface = Color(0xFF17120B), surfaceLow = Color(0xFF1B160F),
-    container = Color(0xFF211C13), high = Color(0xFF282218), highest = Color(0xFF2E281E),
-    onSurface = Color(0xFFEEE2D4), onSurfaceVariant = Color(0xFFB7AB9A), outlineVariant = Color(0xFF443B2C),
-    primary = Color(0xFFFFC766), onPrimary = Color(0xFF2B1700),
-    accent = Color(0xFFFFDEA8), onAccent = Color(0xFF2B1700), onAccentStrong = Color(0xFF7A4F00),
-    secondaryContainer = Color(0xFF3A3122), onSecondaryContainer = Color(0xFFEFDCC2),
-    error = Color(0xFFFFB4AB), isDark = true
-)
+private val redLight = neonLight("绯红", Color(0xFFFF4D45), Color.White, Color(0xFFD32820))
+private val redDark = neonDark("绯红", Color(0xFFFF7B74), Color(0xFF3D0603))
 
-private val roseLight = SereinPalette(
-    name = "玫红",
-    surface = Color(0xFFFCF4F8), surfaceLow = Color(0xFFF9EFF4),
-    container = Color(0xFFF5E9F0), high = Color(0xFFEFE2EA), highest = Color(0xFFE9DCE4),
-    onSurface = Color(0xFF1F1A1D), onSurfaceVariant = Color(0xFF4C4447), outlineVariant = Color(0xFFD5C8CC),
-    primary = Color(0xFF984061), onPrimary = Color.White,
-    accent = Color(0xFFFFD9E2), onAccent = Color(0xFF3E001D), onAccentStrong = Color(0xFF8E4957),
-    secondaryContainer = Color(0xFFF3DAE4), onSecondaryContainer = Color(0xFF4F3D44),
-    error = Color(0xFFBA1A1A)
-)
-
-private val roseDark = SereinPalette(
-    name = "玫红",
-    surface = Color(0xFF181114), surfaceLow = Color(0xFF1C1518),
-    container = Color(0xFF221A1E), high = Color(0xFF281F23), highest = Color(0xFF2E2529),
-    onSurface = Color(0xFFEBDFE3), onSurfaceVariant = Color(0xFFB2A6AA), outlineVariant = Color(0xFF44383D),
-    primary = Color(0xFFFFB1C8), onPrimary = Color(0xFF3E001D),
-    accent = Color(0xFFFFD9E2), onAccent = Color(0xFF3E001D), onAccentStrong = Color(0xFF8E4957),
-    secondaryContainer = Color(0xFF37222B), onSecondaryContainer = Color(0xFFEBD5DE),
-    error = Color(0xFFFFB4AB), isDark = true
-)
-
-private val cyanLight = SereinPalette(
-    name = "青碧",
-    surface = Color(0xFFF4FAFB), surfaceLow = Color(0xFFEEF5F6),
-    container = Color(0xFFE8F0F1), high = Color(0xFFE2EAEB), highest = Color(0xFFDCE4E5),
-    onSurface = Color(0xFF161D1D), onSurfaceVariant = Color(0xFF3E4949), outlineVariant = Color(0xFFBCC8C8),
-    primary = Color(0xFF006874), onPrimary = Color.White,
-    accent = Color(0xFFB4EBFF), onAccent = Color(0xFF001F24), onAccentStrong = Color(0xFF004F59),
-    secondaryContainer = Color(0xFFC9E7EA), onSecondaryContainer = Color(0xFF35494C),
-    error = Color(0xFFBA1A1A)
-)
-
-private val cyanDark = SereinPalette(
-    name = "青碧",
-    surface = Color(0xFF0F1415), surfaceLow = Color(0xFF131819),
-    container = Color(0xFF181E1F), high = Color(0xFF1E2425), highest = Color(0xFF242A2B),
-    onSurface = Color(0xFFDFE7E8), onSurfaceVariant = Color(0xFFA6B2B3), outlineVariant = Color(0xFF384345),
-    primary = Color(0xFF4FD8EB), onPrimary = Color(0xFF001F24),
-    accent = Color(0xFFB4EBFF), onAccent = Color(0xFF001F24), onAccentStrong = Color(0xFF004F59),
-    secondaryContainer = Color(0xFF273437), onSecondaryContainer = Color(0xFFC4E1E4),
-    error = Color(0xFFFFB4AB), isDark = true
-)
-
-private val graphiteLight = SereinPalette(
-    name = "石墨",
-    surface = Color(0xFFF4F5F7), surfaceLow = Color(0xFFEFF0F3),
-    container = Color(0xFFE9EAEE), high = Color(0xFFE3E4E9), highest = Color(0xFFDDDFE4),
-    onSurface = Color(0xFF191B1F), onSurfaceVariant = Color(0xFF45474D), outlineVariant = Color(0xFFC9CBD1),
-    primary = Color(0xFF3F4754), onPrimary = Color.White,
-    accent = Color(0xFFDDE2EA), onAccent = Color(0xFF191C21), onAccentStrong = Color(0xFF3F4754),
-    secondaryContainer = Color(0xFFDEE2EB), onSecondaryContainer = Color(0xFF41474E),
-    error = Color(0xFFBA1A1A)
-)
-
-private val graphiteDark = SereinPalette(
-    name = "石墨",
-    surface = Color(0xFF111214), surfaceLow = Color(0xFF151619),
-    container = Color(0xFF1A1C1F), high = Color(0xFF202226), highest = Color(0xFF26282C),
-    onSurface = Color(0xFFE1E2E6), onSurfaceVariant = Color(0xFFA6A8AE), outlineVariant = Color(0xFF383A40),
-    primary = Color(0xFFB6C2D6), onPrimary = Color(0xFF16222F),
-    accent = Color(0xFFDDE2EA), onAccent = Color(0xFF191C21), onAccentStrong = Color(0xFF3F4754),
-    secondaryContainer = Color(0xFF2C313A), onSecondaryContainer = Color(0xFFD5DCE8),
-    error = Color(0xFFFFB4AB), isDark = true
-)
-
-/** 配色方案：8 套预设 + 自定义。顺序与设置页圆点一致。 */
-val PaletteNames = listOf("柔紫", "赭红", "靛蓝", "灰绿", "蜜橙", "玫红", "青碧", "石墨", "自定义")
+/** 配色方案：8 套霓虹预设（青柠为默认）+ 自定义。顺序与设置页圆点一致。 */
+val PaletteNames = listOf("青柠", "荧光绿", "电光紫", "电光蓝", "橙焰", "品红", "青碧", "绯红", "自定义")
 private val PalettesLight = listOf(
-    softPurpleLight, ochreLight, indigoLight, forestMintLight,
-    amberLight, roseLight, cyanLight, graphiteLight
+    limeLight, greenLight, violetLight, blueLight,
+    orangeLight, magentaLight, tealLight, redLight
 )
 private val PalettesDark = listOf(
-    softPurpleDark, ochreDark, indigoDark, forestMintDark,
-    amberDark, roseDark, cyanDark, graphiteDark
+    limeDark, greenDark, violetDark, blueDark,
+    orangeDark, magentaDark, tealDark, redDark
 )
 const val CUSTOM_PALETTE_INDEX = 8
 
-/** 由任意主色程序化生成同结构的调色板（用于「自定义」配色）。 */
-fun paletteFromPrimary(primary: Color, dark: Boolean): SereinPalette {
+/** 由用户挑选拾的点缀色生成同结构调色板：中性底不变，仅替换点缀色。 */
+fun paletteFromPrimary(accent: Color, dark: Boolean): SereinPalette {
     return if (!dark) {
-        SereinPalette(
-            name = "自定义",
-            surface = lerp(Color.White, primary, 0.03f),
-            surfaceLow = lerp(Color.White, primary, 0.055f),
-            container = lerp(Color.White, primary, 0.09f),
-            high = lerp(Color.White, primary, 0.12f),
-            highest = lerp(Color.White, primary, 0.16f),
-            onSurface = lerp(Color(0xFF15181C), primary, 0.06f),
-            onSurfaceVariant = lerp(Color(0xFF3C4249), primary, 0.25f),
-            outlineVariant = lerp(Color.White, primary, 0.38f),
-            primary = primary,
-            onPrimary = Color.White,
-            accent = lerp(Color.White, primary, 0.28f),
-            onAccent = lerp(Color.Black, primary, 0.85f),
-            onAccentStrong = lerp(primary, Color.Black, 0.28f),
-            secondaryContainer = lerp(Color.White, primary, 0.22f),
-            onSecondaryContainer = lerp(primary, Color.Black, 0.35f),
-            error = Color(0xFFBA1A1A)
+        neonLight(
+            "自定义",
+            accent = accent,
+            onAccent = if (accent.luminance() > 0.55f) OnAcid else Color.White,
+            accentStrong = lerp(accent, Color.Black, 0.3f)
         )
     } else {
-        val lightened = lerp(primary, Color.White, 0.5f)
-        val base = Color(0xFF0E1013)
-        SereinPalette(
-            name = "自定义",
-            surface = lerp(base, primary, 0.05f),
-            surfaceLow = lerp(base, primary, 0.09f),
-            container = lerp(base, primary, 0.13f),
-            high = lerp(base, primary, 0.17f),
-            highest = lerp(base, primary, 0.21f),
-            onSurface = lerp(Color(0xFFE2E4E8), primary, 0.08f),
-            onSurfaceVariant = lerp(Color(0xFFA9ADB5), primary, 0.3f),
-            outlineVariant = lerp(base, primary, 0.42f),
-            primary = lightened,
-            onPrimary = lerp(Color.Black, primary, 0.85f),
-            accent = lerp(primary, Color.White, 0.68f),
-            onAccent = lerp(Color.Black, primary, 0.85f),
-            onAccentStrong = lerp(primary, Color.Black, 0.3f),
-            secondaryContainer = lerp(base, primary, 0.3f),
-            onSecondaryContainer = lerp(Color.White, primary, 0.45f),
-            error = Color(0xFFFFB4AB),
-            isDark = true
+        neonDark(
+            "自定义",
+            accent = lerp(accent, Color.White, 0.15f),
+            onAccent = if (lerp(accent, Color.White, 0.15f).luminance() > 0.55f) OnAcid else Color.Black
         )
     }
 }
@@ -289,13 +147,16 @@ fun paletteFor(index: Int, dark: Boolean, customPrimary: Int? = null): SereinPal
     return if (dark) PalettesDark[i] else PalettesLight[i]
 }
 
-/** 预设圆点展示色（始终用浅色主色）。 */
+/** 预设圆点展示色（设置页色板圆点展示各套的点缀色）。 */
 fun paletteDotColor(index: Int): Color {
     val i = index.coerceIn(0, PalettesLight.lastIndex)
-    return PalettesLight[i].primary
+    return PalettesLight[i].accent
 }
 
-val LocalSerein = staticCompositionLocalOf { forestMintLight }
+val LocalSerein = staticCompositionLocalOf { limeLight }
+
+/** 全局触感反馈开关（设置页控制），由 MainActivity 提供。 */
+val LocalHapticsEnabled = staticCompositionLocalOf { true }
 
 @Composable
 fun SereinTheme(palette: SereinPalette, dark: Boolean, content: @Composable () -> Unit) {
@@ -309,10 +170,10 @@ fun SereinTheme(palette: SereinPalette, dark: Boolean, content: @Composable () -
         onSecondary = palette.onPrimary,
         secondaryContainer = palette.secondaryContainer,
         onSecondaryContainer = palette.onSecondaryContainer,
-        tertiary = Honey,
-        onTertiary = Color.White,
-        tertiaryContainer = Honey,
-        onTertiaryContainer = OnHoney,
+        tertiary = palette.accent,
+        onTertiary = palette.onAccent,
+        tertiaryContainer = palette.accent,
+        onTertiaryContainer = palette.onAccent,
         background = palette.surface,
         onBackground = palette.onSurface,
         surface = palette.surface,
@@ -345,9 +206,4 @@ fun SereinTheme(palette: SereinPalette, dark: Boolean, content: @Composable () -
     MaterialTheme(colorScheme = scheme) {
         CompositionLocalProvider(LocalSerein provides palette, content = content)
     }
-}
-
-fun paletteFor(index: Int, dark: Boolean): SereinPalette {
-    val i = index.coerceIn(0, PalettesLight.lastIndex)
-    return if (dark) PalettesDark[i] else PalettesLight[i]
 }
