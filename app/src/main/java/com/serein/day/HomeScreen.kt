@@ -42,7 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -140,7 +139,13 @@ fun HomeTab(
                         if (minimalMode) {
                             MinimalRow(day) { onOpen(day.id) }
                         } else {
-                            DayRowCard(day, coverStore, books.find { it.id == day.bookId }?.name ?: "") { onOpen(day.id) }
+                            DayRowCard(
+                                day = day,
+                                coverStore = coverStore,
+                                bookName = books.find { it.id == day.bookId }?.name ?: "",
+                                onClick = { onOpen(day.id) },
+                                showNoteBadge = false
+                            )
                         }
                     }
                 }
@@ -354,19 +359,6 @@ fun HeroCard(day: Countdown, coverStore: CoverStore, onOpen: () -> Unit) {
                     } else {
                         Sparkle(Modifier.size(22.dp), color = s.accent)
                     }
-                    Spacer(Modifier.height(8.dp))
-                    val latestNote = day.notes.maxByOrNull { it.createdAt }?.text?.take(12)?.ifBlank { null }
-                    if (latestNote != null) {
-                        Text(
-                            latestNote,
-                            color = OnInkMuted,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.rotate(-4f)
-                        )
-                    }
                 }
             }
             Spacer(Modifier.height(18.dp))
@@ -416,7 +408,13 @@ fun HeroCard(day: Countdown, coverStore: CoverStore, onOpen: () -> Unit) {
 
 /** 日程时光列表里的单条倒数卡：置顶行带马卡龙图标圆，普通行纯文字排版。 */
 @Composable
-fun DayRowCard(day: Countdown, coverStore: CoverStore? = null, bookName: String = "", onClick: () -> Unit) {
+fun DayRowCard(
+    day: Countdown,
+    coverStore: CoverStore? = null,
+    bookName: String = "",
+    showNoteBadge: Boolean = true,
+    onClick: () -> Unit
+) {
     val s = LocalSerein.current
     val r = remainingDays(day)
     val pinned = day.priority == 2
@@ -451,7 +449,9 @@ fun DayRowCard(day: Countdown, coverStore: CoverStore? = null, bookName: String 
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                NoteBadge(day.notes.size, s.onSurfaceVariant)
+                if (showNoteBadge) {
+                    NoteBadge(day.notes.size, s.onSurfaceVariant)
+                }
             }
             Spacer(Modifier.height(3.dp))
             Text(
