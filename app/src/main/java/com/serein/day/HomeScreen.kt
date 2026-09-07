@@ -85,6 +85,7 @@ fun HomeTab(
         ).filter { it.second.isNotEmpty() }
     }
     val bookCounts = remember(active) { active.groupingBy { it.bookId }.eachCount() }
+    val bookNames = remember(books) { books.associate { it.id to it.name } }
     val listState = rememberLazyListState()
 
     Column(Modifier.fillMaxSize()) {
@@ -143,7 +144,7 @@ fun HomeTab(
                             DayRowCard(
                                 day = day,
                                 coverStore = coverStore,
-                                bookName = books.find { it.id == day.bookId }?.name ?: "",
+                                bookName = bookNames[day.bookId] ?: "",
                                 onClick = { onOpen(day.id) },
                                 showNoteBadge = false
                             )
@@ -160,6 +161,8 @@ fun HomeTab(
 @Composable
 private fun BrandHeader(selectedBookName: String?, onFilter: () -> Unit, onOpenSettings: () -> Unit) {
     val s = LocalSerein.current
+    // 当天日期只在组合时算一次：Header 高频重组合，避免每帧重复 now()/weekday
+    val todayLabel = remember { "今天是 ${LocalDate.now().format(FmtIso)} ${weekdayFull(LocalDate.now())}" }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -177,7 +180,7 @@ private fun BrandHeader(selectedBookName: String?, onFilter: () -> Unit, onOpenS
             )
             Spacer(Modifier.height(3.dp))
             Text(
-                "今天是 ${LocalDate.now().format(FmtIso)} ${weekdayFull(LocalDate.now())}",
+                todayLabel,
                 color = s.onSurfaceVariant,
                 fontSize = 12.5.sp,
                 maxLines = 1,
@@ -546,6 +549,7 @@ private fun MinimalRow(day: Countdown, onClick: () -> Unit) {
 @Composable
 fun ArchiveScreen(days: List<Countdown>, books: List<Book>, onBack: () -> Unit, onOpen: (String) -> Unit, coverStore: CoverStore) {
     val archived = remember(days) { days.filter { it.archived }.sortedByDescending { it.date } }
+    val bookNames = remember(books) { books.associate { it.id to it.name } }
     Column(Modifier.fillMaxSize()) {
         TopBar(title = "归档", leadingIcon = Icons.AutoMirrored.Filled.ArrowBack, onLeading = onBack, large = true)
         if (archived.isEmpty()) {
@@ -565,7 +569,7 @@ fun ArchiveScreen(days: List<Countdown>, books: List<Book>, onBack: () -> Unit, 
                     modifier = Modifier.padding(top = 8.dp, start = 4.dp)
                 ) }
                 items(archived, key = { it.id }, contentType = { "archived" }) { day ->
-                    DayRowCard(day, coverStore, books.find { it.id == day.bookId }?.name ?: "") { onOpen(day.id) }
+                    DayRowCard(day, coverStore, bookNames[day.bookId] ?: "") { onOpen(day.id) }
                 }
             }
         }

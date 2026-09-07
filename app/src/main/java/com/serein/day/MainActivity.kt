@@ -32,12 +32,17 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 
 class MainActivity : ComponentActivity() {
@@ -65,16 +70,23 @@ class MainActivity : ComponentActivity() {
             }
             SereinTheme(palette = paletteFor(paletteIndex, dark, customPrimary), dark = dark) {
                 val context = LocalContext.current
-                LaunchedEffect(days, pinnedNotif) {
-                    if (pinnedNotif) {
-                        PinnedNotification.update(context, days)
-                        PinnedNotification.scheduleMidnightRefresh(context)
-                    } else {
-                        PinnedNotification.cancel(context)
-                    }
-                }
-                LaunchedEffect(days) {
-                    DailyReminderScheduler.sync(context, days)
+                // 通知/闹钟等外设副作用与 UI 解耦：snapshotFlow 监听数据与开关，conflate 合并高频连续改动，
+                // 处理挪到 Default 调度器，避免每次改动都在主线程同步刷新全部通知/闹钟而卡顿。
+                LaunchedEffect(Unit) {
+                    snapshotFlow { days to pinnedNotif }
+                        .distinctUntilChanged()
+                        .conflate()
+                        .collect { (d, pin) ->
+                            withContext(Dispatchers.Default) {
+                                if (pin) {
+                                    PinnedNotification.update(context, d)
+                                    PinnedNotification.scheduleMidnightRefresh(context)
+                                } else {
+                                    PinnedNotification.cancel(context)
+                                }
+                                DailyReminderScheduler.sync(context, d)
+                            }
+                        }
                 }
                 CompositionLocalProvider(LocalHapticsEnabled provides haptics) {
                     SereinApp(

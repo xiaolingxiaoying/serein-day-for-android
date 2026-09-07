@@ -6,6 +6,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.net.Uri
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -16,6 +18,7 @@ import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 /** 一条小记：盖有发布时刻，随时可编辑、可删除。 */
+@Immutable
 data class Note(
     val id: String,
     val text: String,
@@ -24,6 +27,7 @@ data class Note(
 )
 
 /** 倒数本：事件的归属分组，可新建、重命名、删除（删除时事件移入首个剩余倒数本）。 */
+@Immutable
 data class Book(val id: String, val name: String)
 
 /** 列表排序方式（Days Matter 式：置顶始终在最前）。 */
@@ -51,6 +55,7 @@ enum class ImageScaleMode(val key: String, val label: String) {
 }
 
 /** 小倒数日：挂在某个倒数事件下的子节点（如「报名」「打印准考证」），只记标题与日期。 */
+@Immutable
 data class SubDay(
     val id: String,
     val title: String,
@@ -64,6 +69,7 @@ data class SubDay(
  * wallpaperDim 为详情页壁纸压暗遮罩强度（0–0.85），null 表示默认 0.45。
  * subs 为小倒数日列表。
  */
+@Immutable
 data class Countdown(
     val id: String,
     val title: String,
@@ -278,6 +284,7 @@ class DayRepository(context: Context) {
 }
 
 /** 图片副本：与原图脱钩，存于应用私有 covers/ 目录。封面文件名为 <id>.*，详情壁纸为 <id>.w.*。 */
+@Stable
 class CoverStore(context: Context) {
     private val resolver = context.applicationContext.contentResolver
     private val dir = File(context.filesDir, "covers").apply { mkdirs() }
