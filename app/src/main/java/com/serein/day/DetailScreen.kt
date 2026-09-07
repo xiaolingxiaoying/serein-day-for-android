@@ -1,5 +1,6 @@
 package com.serein.day
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
@@ -108,12 +109,31 @@ fun DetailScreen(
     var pickingCover by remember { mutableStateOf(false) }
     var pendingImage by remember { mutableStateOf<DetailPendingImage?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var selectedSubDay by remember(day.id) { mutableStateOf<SubDay?>(null) }
+    var editingSubDay by remember(day.id) { mutableStateOf<SubDay?>(null) }
     var detailsExpanded by remember(day.id) { mutableStateOf(false) }
     val wallpaperBitmap = rememberCoverBitmap(day.wallpaper, coverStore)
     // 壁纸压暗强度：拖动时本地实时生效，松手才落库
     var wallpaperDim by remember(day.id, day.wallpaper) { mutableFloatStateOf(day.wallpaperDim ?: 0.45f) }
     val wallpaperOpacity = day.wallpaperOpacity ?: 1f
     val canEdit = !minimalMode && !day.archived
+
+    BackHandler(enabled = selectedSubDay != null) { selectedSubDay = null }
+
+    if (selectedSubDay != null) {
+        SubDayDetailScreen(
+            sub = selectedSubDay!!,
+            archived = day.archived,
+            onBack = { selectedSubDay = null },
+            onEdit = if (!day.archived) {
+                {
+                    editingSubDay = selectedSubDay
+                    selectedSubDay = null
+                }
+            } else null
+        )
+        return
+    }
 
     Box(Modifier.fillMaxSize().background(s.surface)) {
         // 整页背景壁纸 + 可调压暗遮罩，保证前景文字可读
@@ -164,8 +184,7 @@ fun DetailScreen(
                             subs = day.subs,
                             archived = day.archived,
                             onAdd = onAddSubDay,
-                            onEdit = onEditSubDay,
-                            onDelete = onDeleteSubDay
+                            onOpen = { selectedSubDay = it }
                         )
                         NotesSection(
                             day = day,
@@ -197,6 +216,17 @@ fun DetailScreen(
             }
         }
 
+    }
+
+    if (editingSubDay != null) {
+        SubDayEditorSheet(
+            initial = editingSubDay,
+            onConfirm = { title, date ->
+                onEditSubDay(editingSubDay!!.id, title, date)
+                editingSubDay = null
+            },
+            onDismiss = { editingSubDay = null }
+        )
     }
 
     if (pickingWallpaper) {
@@ -316,6 +346,93 @@ private fun DetailToggleButton(expanded: Boolean, onClick: () -> Unit) {
             tint = s.onSurfaceVariant,
             modifier = Modifier.size(18.dp)
         )
+    }
+}
+
+@Composable
+private fun SubDayDetailScreen(
+    sub: SubDay,
+    archived: Boolean,
+    onBack: () -> Unit,
+    onEdit: (() -> Unit)?
+) {
+    val s = LocalSerein.current
+    val remaining = subDayRemaining(sub.date)
+
+    Column(Modifier.fillMaxSize().background(s.surface)) {
+        TopBar(
+            title = sub.title,
+            leadingIcon = Icons.AutoMirrored.Filled.ArrowBack,
+            onLeading = onBack,
+            trailingText = if (!archived) "编辑" else null,
+            onTrailing = onEdit
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(30.dp))
+                    .background(if (s.isDark) Color(0xFF101318) else Ink)
+                    .then(if (s.isDark) Modifier.border(1.dp, s.outlineVariant, RoundedCornerShape(30.dp)) else Modifier)
+                    .padding(22.dp)
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        Text("距目标日", color = OnInkMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp)
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            sub.title,
+                            color = OnInk,
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Sparkle(Modifier.size(22.dp), color = s.accent)
+                }
+                Spacer(Modifier.height(18.dp))
+                Text(subDayStatus(sub.date), color = OnInkMuted, fontSize = 14.sp)
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        kotlin.math.abs(remaining).toString(),
+                        color = s.accent,
+                        fontSize = 86.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-4).sp,
+                        style = TnumStyle
+                    )
+                    if (remaining != 0L) {
+                        Text(" 天", color = OnInk, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 16.dp, start = 4.dp))
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(s.accent)
+                        .padding(horizontal = 13.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "目标日：${sub.date.format(FmtDot)}（${weekdayShort(sub.date)}）",
+                        color = s.onAccent,
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -579,7 +696,7 @@ fun milestoneStart(day: Countdown): LocalDate = day.createdAt ?: day.date.minusD
 
 /** 小倒数日倒数文案：还有 N 天 / 就是今天 / 已过 N 天。 */
 private fun subDayStatus(date: LocalDate): String {
-    val r = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), date)
+    val r = subDayRemaining(date)
     return when {
         r > 0 -> "还有 $r 天"
         r == 0L -> "就是今天"
@@ -587,62 +704,63 @@ private fun subDayStatus(date: LocalDate): String {
     }
 }
 
+private fun subDayRemaining(date: LocalDate): Long =
+    java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), date)
+
 /** 小倒数日区：给主日子挂子节点（如报名、打印准考证），可增删改。 */
 @Composable
 private fun SubDaysSection(
     subs: List<SubDay>,
     archived: Boolean,
     onAdd: (String, LocalDate) -> Unit,
-    onEdit: (String, String, LocalDate) -> Unit,
-    onDelete: (String) -> Unit
+    onOpen: (SubDay) -> Unit
 ) {
     val s = LocalSerein.current
     var adding by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf<SubDay?>(null) }
     val sorted = remember(subs) { subs.sortedBy { it.date } }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(s.container)
-            .padding(16.dp)
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("小倒数日", color = s.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(10.dp))
-        Column {
-            sorted.forEachIndexed { index, sub ->
-                if (index > 0) {
-                    HorizontalDivider(color = s.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
-                }
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            sorted.forEach { sub ->
+                val remaining = subDayRemaining(sub.date)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = !archived) { editing = sub }
-                        .padding(vertical = 11.dp),
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(s.container)
+                        .clickable { onOpen(sub) }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(sub.title, color = s.onSurface, fontSize = 14.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            "${sub.date.format(FmtDot)} · ${subDayStatus(sub.date)}",
-                            color = s.onSurfaceVariant,
-                            fontSize = 12.sp
-                        )
+                        Text(sub.title, color = s.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    if (!archived) {
-                        Icon(
-                            Icons.Filled.Delete,
-                            contentDescription = "删除小倒数日",
-                            tint = s.outlineVariant,
-                            modifier = Modifier
-                                .size(34.dp)
-                                .padding(8.dp)
-                                .clickable { onDelete(sub.id) }
-                        )
+                    if (remaining == 0L) {
+                        PillChip("就是今天", s.accent, s.onAccent, fontSize = 13.0)
+                    } else {
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                kotlin.math.abs(remaining).toString(),
+                                color = if (remaining > 0) s.primary else s.onSurfaceVariant,
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = (-1).sp,
+                                style = TnumStyle
+                            )
+                            Text(
+                                "天",
+                                color = s.onSurfaceVariant,
+                                fontSize = 11.5.sp,
+                                modifier = Modifier.padding(start = 3.dp, bottom = 4.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -672,16 +790,6 @@ private fun SubDaysSection(
                 adding = false
             },
             onDismiss = { adding = false }
-        )
-    }
-    if (editing != null) {
-        SubDayEditorSheet(
-            initial = editing,
-            onConfirm = { title, date ->
-                onEdit(editing!!.id, title, date)
-                editing = null
-            },
-            onDismiss = { editing = null }
         )
     }
 }
@@ -776,28 +884,33 @@ private fun NotesSection(
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("小记", color = s.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
-        Spacer(Modifier.height(12.dp))
-        Column {
-            notes.forEachIndexed { index, note ->
-                if (index > 0) {
-                    HorizontalDivider(color = s.outlineVariant, thickness = 0.5.dp)
-                }
-                if (editingId == note.id) {
-                    NoteEditRow(
-                        initial = note.text,
-                        onSave = { text ->
-                            onEditNote(note.id, text)
-                            editingId = null
-                        },
-                        onCancel = { editingId = null }
-                    )
-                } else {
-                    NoteRow(
-                        note = note,
-                        archived = day.archived,
-                        onEdit = { editingId = note.id },
-                        onDelete = { onDeleteNote(note.id) }
-                    )
+        Spacer(Modifier.height(10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            notes.forEach { note ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(s.container)
+                        .padding(16.dp)
+                ) {
+                    if (editingId == note.id) {
+                        NoteEditRow(
+                            initial = note.text,
+                            onSave = { text ->
+                                onEditNote(note.id, text)
+                                editingId = null
+                            },
+                            onCancel = { editingId = null }
+                        )
+                    } else {
+                        NoteRow(
+                            note = note,
+                            archived = day.archived,
+                            onEdit = { editingId = note.id },
+                            onDelete = { onDeleteNote(note.id) }
+                        )
+                    }
                 }
             }
         }
@@ -861,7 +974,7 @@ private fun NoteRow(note: Note, archived: Boolean, onEdit: () -> Unit, onDelete:
     val s = LocalSerein.current
     var meta = "发布 ${note.createdAt.format(FmtNote)}"
     note.updatedAt?.let { meta += " · 修改于 ${it.format(FmtNote)}" }
-    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+    Column(Modifier.fillMaxWidth()) {
         Text(note.text, color = s.onSurface, fontSize = 14.sp, lineHeight = 21.sp)
         Spacer(Modifier.height(6.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -895,7 +1008,7 @@ private fun NoteRow(note: Note, archived: Boolean, onEdit: () -> Unit, onDelete:
 private fun NoteEditRow(initial: String, onSave: (String) -> Unit, onCancel: () -> Unit) {
     val s = LocalSerein.current
     var text by remember { mutableStateOf(initial) }
-    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+    Column(Modifier.fillMaxWidth()) {
         BasicTextField(
             value = text,
             onValueChange = { if (it.length <= 200) text = it },
