@@ -146,6 +146,7 @@ fun DetailScreen(
                         onEditNote = onEditNote,
                         onDeleteNote = onDeleteNote
                     )
+                    ProgressSection(day)
                 }
                 Spacer(Modifier.height(6.dp))
                 DetailActions(
@@ -488,54 +489,59 @@ private fun MilestoneCard(day: Countdown, coverStore: CoverStore, minimal: Boole
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Spacer(Modifier.height(16.dp))
-        // 里程碑进度内嵌条：黑卡上的深灰内衬
-        Column(
+    }
+}
+
+/** 独立的里程碑进度区：放在小倒数日和小记之后，避免挤在主卡片里。 */
+@Composable
+private fun ProgressSection(day: Countdown) {
+    val s = LocalSerein.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(s.container)
+            .padding(16.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (day.repeatYearly) "每逢此日 · 已陪你走过 ${yearRound(day)} 天" else "已过 ${elapsedSince(day)} 天（起始 ${milestoneStart(day).format(FmtDot)}）",
+                color = s.onSurfaceVariant,
+                fontSize = 12.sp,
+                modifier = Modifier.weight(1f)
+            )
+            Text("${(progressOf(day) * 100).roundToInt()}% 完成", color = s.accent, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(10.dp))
+        // 进度条入场从 0 弹簧展开，与进度环一致
+        var progressPlayed by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { progressPlayed = true }
+        val fillProgress by animateFloatAsState(
+            targetValue = if (progressPlayed) progressOf(day).coerceIn(0.02f, 1f) else 0f,
+            animationSpec = spring(dampingRatio = 1f, stiffness = 160f),
+            label = "detailProgressFill"
+        )
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .background(InkElevated)
-                .padding(14.dp)
+                .height(8.dp)
+                .clip(RoundedCornerShape(50))
+                .background(s.highest)
         ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    if (day.repeatYearly) "每逢此日 · 已陪你走过 ${yearRound(day)} 天" else "已过 ${elapsedSince(day)} 天（起始 ${milestoneStart(day).format(FmtDot)}）",
-                    color = OnInkMuted,
-                    fontSize = 12.sp,
-                    modifier = Modifier.weight(1f)
-                )
-                Text("${(progressOf(day) * 100).roundToInt()}% 完成", color = s.accent, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.height(10.dp))
-            // 进度条入场从 0 弹簧展开，与进度环一致
-            var progressPlayed by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) { progressPlayed = true }
-            val fillProgress by animateFloatAsState(
-                targetValue = if (progressPlayed) progressOf(day).coerceIn(0.02f, 1f) else 0f,
-                animationSpec = spring(dampingRatio = 1f, stiffness = 160f),
-                label = "detailProgressFill"
-            )
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
+                    .fillMaxWidth(fillProgress)
+                    .fillMaxHeight()
                     .clip(RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = 0.12f))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(fillProgress)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(50))
-                        .background(s.accent)
-                )
-            }
-            Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth()) {
-                val start = if (day.repeatYearly) previousOccurrence(day, targetDate(day)) else milestoneStart(day)
-                Text("起始 ${start.format(FmtDot)}", color = OnInkMuted, fontSize = 11.sp, modifier = Modifier.weight(1f))
-                Text("目标 ${targetDate(day).format(FmtDot)}", color = OnInkMuted, fontSize = 11.sp)
-            }
+                    .background(s.accent)
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth()) {
+            val start = if (day.repeatYearly) previousOccurrence(day, targetDate(day)) else milestoneStart(day)
+            Text("起始 ${start.format(FmtDot)}", color = s.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.weight(1f))
+            Text("目标 ${targetDate(day).format(FmtDot)}", color = s.onSurfaceVariant, fontSize = 11.sp)
         }
     }
 }
