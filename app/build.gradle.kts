@@ -25,6 +25,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // 无独立发布密钥，用 debug 签名使 release 包可直接安装（个人分发用）
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

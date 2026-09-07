@@ -108,55 +108,13 @@ fun SettingsTab(
                 .navigationBarsPadding()
                 .padding(bottom = 36.dp)
         ) {
-
-            // 品牌卡：Serein Day
-            Row(
-                Modifier
-                    .padding(horizontal = 20.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(s.container)
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    Modifier
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Ink),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Sparkle(Modifier.size(30.dp))
-                }
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        "Serein Day",
-                        color = s.onSurface,
-                        fontSize = 21.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = (-0.6).sp
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text("让重要的日子更清晰", color = s.onSurfaceVariant, fontSize = 12.5.sp)
-                }
-                Text(
-                    "Good days\nahead.",
-                    color = s.onSurfaceVariant,
-                    fontSize = 10.5.sp,
-                    lineHeight = 13.sp,
-                    modifier = Modifier.padding(end = 6.dp)
-                )
-                Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = s.outlineVariant, modifier = Modifier.size(18.dp))
-            }
-
-            // 外观：深色大卡 + 模式胶囊 + 色板圆点
+            // 外观：模式胶囊 + 色板圆点（与下方设置分组同款白色圆角卡片）
             Column(
                 Modifier
                     .padding(horizontal = 20.dp, vertical = 12.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(26.dp))
-                    .background(Ink)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(s.container)
                     .padding(18.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -171,8 +129,8 @@ fun SettingsTab(
                     }
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text("外观", color = OnInk, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                        Text("选择你喜欢的界面风格", color = OnInkMuted, fontSize = 12.sp)
+                        Text("外观", color = s.onSurface, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text("选择你喜欢的界面风格", color = s.onSurfaceVariant, fontSize = 12.sp)
                     }
                 }
                 Spacer(Modifier.height(16.dp))
@@ -222,7 +180,7 @@ fun SettingsTab(
                 }
             }
 
-            SettingsSectionLabel("偏好")
+            SettingsSectionLabel("通用")
             SettingsGroup {
                 SettingsRow(
                     title = "极简模式",
@@ -240,19 +198,16 @@ fun SettingsTab(
                 )
                 GroupDivider()
                 SettingsRow(
-                    title = "倒数本管理",
-                    subtitle = "共 ${books.size} 本 · 新建、重命名或删除",
-                    trailing = { Chevron() },
-                    onClick = onManageBooks
+                    title = "触感反馈",
+                    subtitle = "操作按钮与倒数时翻页振动",
+                    trailing = {
+                        LimeSwitch(checked = haptics, onCheckedChange = onHapticsChange)
+                    }
                 )
-                GroupDivider()
-                SettingsRow(
-                    title = "归档管理",
-                    subtitle = "共 ${days.count { it.archived }} 条封存的倒数日",
-                    trailing = { Chevron() },
-                    onClick = onOpenArchive
-                )
-                GroupDivider()
+            }
+
+            SettingsSectionLabel("提醒")
+            SettingsGroup {
                 SettingsRow(
                     title = "常驻通知",
                     subtitle = if (pinnedNotif) "已在通知栏显示置顶倒数卡" else "在通知栏常驻显示置顶的倒数卡",
@@ -269,13 +224,22 @@ fun SettingsTab(
                         )
                     }
                 )
+            }
+
+            SettingsSectionLabel("数据管理")
+            SettingsGroup {
+                SettingsRow(
+                    title = "倒数本管理",
+                    subtitle = "共 ${books.size} 本 · 新建、重命名或删除",
+                    trailing = { Chevron() },
+                    onClick = onManageBooks
+                )
                 GroupDivider()
                 SettingsRow(
-                    title = "触感反馈",
-                    subtitle = "操作按钮与倒数时翻页振动",
-                    trailing = {
-                        LimeSwitch(checked = haptics, onCheckedChange = onHapticsChange)
-                    }
+                    title = "归档管理",
+                    subtitle = "共 ${days.count { it.archived }} 条封存的倒数日",
+                    trailing = { Chevron() },
+                    onClick = onOpenArchive
                 )
                 GroupDivider()
                 SettingsRow(
@@ -449,7 +413,7 @@ private fun Chevron() {
     )
 }
 
-/** 外观卡内的模式胶囊：选中 = 青柠底黑字，未选中 = 深灰底白字。 */
+/** 外观卡内的模式胶囊：选中 = 青柠底黑字，未选中 = 中性底。 */
 @Composable
 private fun ModePill(
     modifier: Modifier = Modifier,
@@ -460,10 +424,11 @@ private fun ModePill(
     onAccent: Color,
     onSelect: () -> Unit
 ) {
+    val s = LocalSerein.current
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(if (selected) accent else InkElevated)
+            .background(if (selected) accent else s.highest)
             .clickable(onClick = onSelect)
             .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.Center,
@@ -472,13 +437,13 @@ private fun ModePill(
         Icon(
             icon,
             contentDescription = null,
-            tint = if (selected) onAccent else OnInk,
+            tint = if (selected) onAccent else s.onSurfaceVariant,
             modifier = Modifier.size(15.dp)
         )
         Spacer(Modifier.width(6.dp))
         Text(
             label,
-            color = if (selected) onAccent else OnInk,
+            color = if (selected) onAccent else s.onSurfaceVariant,
             fontSize = 12.5.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             maxLines = 1
@@ -529,12 +494,12 @@ private fun PaletteDot(
 ) {
     val s = LocalSerein.current
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        // 纯圆形色点：选中时外圈墨色描边，留一圈底色间隙
+        // 纯圆形色点：选中时外圈描边，留一圈底色间隙
         Box(
             modifier = Modifier
                 .size(36.dp)
                 .clip(CircleShape)
-                .then(if (selected) Modifier.border(2.dp, OnInk, CircleShape) else Modifier)
+                .then(if (selected) Modifier.border(2.dp, s.onSurface, CircleShape) else Modifier)
                 .clickable(onClick = onSelect),
             contentAlignment = Alignment.Center
         ) {
@@ -548,7 +513,7 @@ private fun PaletteDot(
         Spacer(Modifier.height(6.dp))
         Text(
             label,
-            color = if (selected) OnInk else OnInkMuted,
+            color = if (selected) s.onSurface else s.onSurfaceVariant,
             fontSize = 9.5.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             maxLines = 1

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -248,6 +249,9 @@ fun SereinSheet(
         content()
         Spacer(Modifier.navigationBarsPadding())
         Spacer(Modifier.height(18.dp))
+        // 键盘弹出时把整块弹层顶到键盘上方：否则键盘会盖住输入框与保存按钮，
+        // 用户点键盘外区域收键盘时误触遮罩，整个弹层连同已输入内容一起被关掉
+        Spacer(Modifier.fillMaxWidth().imePadding())
     }
 }
 

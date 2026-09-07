@@ -131,7 +131,7 @@ fun DetailScreen(
                     .padding(start = 20.dp, end = 20.dp, bottom = if (wallpaperBitmap != null && !day.archived) 110.dp else 32.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                MilestoneCard(day, books, coverStore, minimal = minimalMode)
+                MilestoneCard(day, coverStore, minimal = minimalMode)
                 if (!minimalMode) {
                     SubDaysSection(
                         subs = day.subs,
@@ -335,11 +335,10 @@ private fun DetailActions(
 }
 
 @Composable
-private fun MilestoneCard(day: Countdown, books: List<Book>, coverStore: CoverStore, minimal: Boolean) {
+private fun MilestoneCard(day: Countdown, coverStore: CoverStore, minimal: Boolean) {
     val s = LocalSerein.current
     val remaining = remainingDays(day)
     val cover = rememberCoverBitmap(day.cover, coverStore)
-    val bookName = books.find { it.id == day.bookId }?.name ?: "纪念日"
     val heroBg = if (s.isDark) Color(0xFF101318) else Ink
     val heroShape = RoundedCornerShape(30.dp)
     val heroBorder = if (s.isDark) Modifier.border(1.dp, s.outlineVariant, heroShape) else Modifier
@@ -461,13 +460,7 @@ private fun MilestoneCard(day: Countdown, books: List<Book>, coverStore: CoverSt
                 }
             )
             Spacer(Modifier.weight(1f))
-            if (cover == null) {
-                HeroIllustration(
-                    bookName,
-                    modifier = Modifier.size(width = 138.dp, height = 136.dp),
-                    accent = s.accent
-                )
-            } else {
+            if (cover != null) {
                 // 有封面时右侧展示圆角封面缩略
                 Box(
                     Modifier
@@ -585,50 +578,39 @@ private fun SubDaysSection(
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("小倒数日", color = s.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(8.dp))
-            Text(subs.size.toString(), color = s.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
         Spacer(Modifier.height(10.dp))
-        if (sorted.isEmpty()) {
-            Text(
-                "给这个日子挂几个前置小节点，比如报名、打印准考证",
-                color = s.onSurfaceVariant,
-                fontSize = 13.sp,
-                lineHeight = 19.sp
-            )
-        } else {
-            Column {
-                sorted.forEachIndexed { index, sub ->
-                    if (index > 0) {
-                        HorizontalDivider(color = s.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
+        Column {
+            sorted.forEachIndexed { index, sub ->
+                if (index > 0) {
+                    HorizontalDivider(color = s.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !archived) { editing = sub }
+                        .padding(vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(sub.title, color = s.onSurface, fontSize = 14.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            "${sub.date.format(FmtDot)} · ${subDayStatus(sub.date)}",
+                            color = s.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
                     }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !archived) { editing = sub }
-                            .padding(vertical = 11.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(sub.title, color = s.onSurface, fontSize = 14.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                "${sub.date.format(FmtDot)} · ${subDayStatus(sub.date)}",
-                                color = s.onSurfaceVariant,
-                                fontSize = 12.sp
-                            )
-                        }
-                        if (!archived) {
-                            Icon(
-                                Icons.Filled.Delete,
-                                contentDescription = "删除小倒数日",
-                                tint = s.outlineVariant,
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .padding(8.dp)
-                                    .clickable { onDelete(sub.id) }
-                            )
-                        }
+                    if (!archived) {
+                        Icon(
+                            Icons.Filled.Delete,
+                            contentDescription = "删除小倒数日",
+                            tint = s.outlineVariant,
+                            modifier = Modifier
+                                .size(34.dp)
+                                .padding(8.dp)
+                                .clickable { onDelete(sub.id) }
+                        )
                     }
                 }
             }
@@ -761,35 +743,29 @@ private fun NotesSection(
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("小记", color = s.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(8.dp))
-            Text(day.notes.size.toString(), color = s.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
         Spacer(Modifier.height(12.dp))
-        if (notes.isEmpty()) {
-            Text("还没有小记，写下第一条吧", color = s.onSurfaceVariant, fontSize = 13.5.sp)
-        } else {
-            Column {
-                notes.forEachIndexed { index, note ->
-                    if (index > 0) {
-                        HorizontalDivider(color = s.outlineVariant, thickness = 0.5.dp)
-                    }
-                    if (editingId == note.id) {
-                        NoteEditRow(
-                            initial = note.text,
-                            onSave = { text ->
-                                onEditNote(note.id, text)
-                                editingId = null
-                            },
-                            onCancel = { editingId = null }
-                        )
-                    } else {
-                        NoteRow(
-                            note = note,
-                            archived = day.archived,
-                            onEdit = { editingId = note.id },
-                            onDelete = { onDeleteNote(note.id) }
-                        )
-                    }
+        Column {
+            notes.forEachIndexed { index, note ->
+                if (index > 0) {
+                    HorizontalDivider(color = s.outlineVariant, thickness = 0.5.dp)
+                }
+                if (editingId == note.id) {
+                    NoteEditRow(
+                        initial = note.text,
+                        onSave = { text ->
+                            onEditNote(note.id, text)
+                            editingId = null
+                        },
+                        onCancel = { editingId = null }
+                    )
+                } else {
+                    NoteRow(
+                        note = note,
+                        archived = day.archived,
+                        onEdit = { editingId = note.id },
+                        onDelete = { onDeleteNote(note.id) }
+                    )
                 }
             }
         }
