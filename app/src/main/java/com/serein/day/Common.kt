@@ -191,19 +191,25 @@ fun BackTopBar(title: String, onBack: () -> Unit, trailingText: String? = null, 
 
 /** 圆形深色按钮（设置入口等）：近黑圆底 + 白色图标，深色下补一圈细描边保持可辨。 */
 @Composable
-fun InkCircleButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
+fun InkCircleButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    backgroundColor: Color = Ink,
+    iconTint: Color = OnInk
+) {
     val s = LocalSerein.current
     Box(
         modifier = Modifier
             .size(44.dp)
             .pressScale(0.9f)
             .clip(CircleShape)
-            .background(Ink)
+            .background(backgroundColor)
             .then(if (s.isDark) Modifier.border(1.dp, s.outlineVariant, CircleShape) else Modifier)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = contentDescription, tint = OnInk, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = contentDescription, tint = iconTint, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -351,7 +357,7 @@ private fun DrawScope.drawSparkle(cx: Float, cy: Float, r: Float, color: Color, 
 }
 
 /** 封面位图 Lru 内存缓存：列表滚动与页面往返不再反复解码（修复归档页首次打开卡顿）。 */
-private object CoverBitmapCache {
+internal object CoverBitmapCache {
     private const val MAX_DIMEN = 720
     private const val KB = 1024
     // 按位图字节计费，上限取堆的 1/8（6–32MB）：张数计费时大图会悄悄挤爆低内存设备
@@ -363,6 +369,11 @@ private object CoverBitmapCache {
     }
 
     fun peek(name: String): androidx.compose.ui.graphics.ImageBitmap? = cache.get(name)
+
+    /** The file behind this key was replaced or removed; never return its previous bitmap. */
+    fun invalidate(name: String) {
+        cache.remove(name)
+    }
 
     fun load(name: String, coverStore: CoverStore): androidx.compose.ui.graphics.ImageBitmap? {
         cache.get(name)?.let { return it }

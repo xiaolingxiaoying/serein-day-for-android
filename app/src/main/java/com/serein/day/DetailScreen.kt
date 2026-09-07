@@ -511,10 +511,6 @@ private fun MilestoneCard(day: Countdown, coverStore: CoverStore, minimal: Boole
                     Text(" 天", color = OnInk, fontSize = 13.sp, modifier = Modifier.padding(bottom = 10.dp))
                 }
             }
-            if (day.priority == 2) {
-                Spacer(Modifier.height(12.dp))
-                PillChip("置顶", s.accent, s.onAccent)
-            }
         }
         return
     }

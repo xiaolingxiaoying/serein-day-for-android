@@ -65,7 +65,6 @@ fun HomeTab(
     minimalMode: Boolean,
     sortOrder: SortOrder
 ) {
-    val s = LocalSerein.current
     var showBookFilter by remember { mutableStateOf(false) }
     val active = remember(days) { days.filterNot { it.archived } }
     val visible = remember(active, selectedBookId) {
@@ -75,15 +74,6 @@ fun HomeTab(
     // 常规模式把第一个事件提为大卡；极简模式整列平铺
     val hero = if (minimalMode) null else sorted.firstOrNull()
     val listDays = remember(sorted, hero) { sorted.filter { it.id != hero?.id } }
-    val groups = remember(listDays) {
-        // 每条事件的剩余天数只算一次，供三组过滤共用
-        val remaining = listDays.associate { it.id to remainingDays(it) }
-        listOf(
-            "今天" to listDays.filter { remaining[it.id] == 0L },
-            "未来" to listDays.filter { (remaining[it.id] ?: 0L) > 0 },
-            "已过去" to listDays.filter { (remaining[it.id] ?: 0L) < 0 }
-        ).filter { it.second.isNotEmpty() }
-    }
     val bookCounts = remember(active) { active.groupingBy { it.bookId }.eachCount() }
     val bookNames = remember(books) { books.associate { it.id to it.name } }
     val listState = rememberLazyListState()
@@ -126,29 +116,17 @@ fun HomeTab(
                         HeroCard(hero, coverStore) { onOpen(hero.id) }
                     }
                 }
-                groups.forEach { (label, itemsInGroup) ->
-                    item(key = "header_$label", contentType = "header") {
-                        Text(
-                            "$label · ${itemsInGroup.size}",
-                            color = s.onSurfaceVariant,
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.8.sp,
-                            modifier = Modifier.padding(top = 8.dp, start = 4.dp)
+                items(listDays, key = { it.id }, contentType = { "day" }) { day ->
+                    if (minimalMode) {
+                        MinimalRow(day) { onOpen(day.id) }
+                    } else {
+                        DayRowCard(
+                            day = day,
+                            coverStore = coverStore,
+                            bookName = bookNames[day.bookId] ?: "",
+                            onClick = { onOpen(day.id) },
+                            showNoteBadge = false
                         )
-                    }
-                    items(itemsInGroup, key = { it.id }, contentType = { "day" }) { day ->
-                        if (minimalMode) {
-                            MinimalRow(day) { onOpen(day.id) }
-                        } else {
-                            DayRowCard(
-                                day = day,
-                                coverStore = coverStore,
-                                bookName = bookNames[day.bookId] ?: "",
-                                onClick = { onOpen(day.id) },
-                                showNoteBadge = false
-                            )
-                        }
                     }
                 }
             }
@@ -199,7 +177,7 @@ private fun BrandHeader(selectedBookName: String?, onFilter: () -> Unit, onOpenS
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Outlined.FilterAlt,
+                Icons.Outlined.Tune,
                 contentDescription = "筛选倒数本",
                 tint = s.primary,
                 modifier = Modifier.size(15.dp)
@@ -214,7 +192,13 @@ private fun BrandHeader(selectedBookName: String?, onFilter: () -> Unit, onOpenS
             )
         }
         Spacer(Modifier.width(10.dp))
-        InkCircleButton(Icons.Filled.Settings, contentDescription = "设置", onClick = onOpenSettings)
+        InkCircleButton(
+            Icons.Filled.Settings,
+            contentDescription = "设置",
+            onClick = onOpenSettings,
+            backgroundColor = s.accent,
+            iconTint = s.onAccent
+        )
     }
 }
 
@@ -317,7 +301,6 @@ private fun EmptyBook(isBook: Boolean) {
 fun HeroCard(day: Countdown, coverStore: CoverStore, onOpen: (() -> Unit)? = null) {
     val s = LocalSerein.current
     val remaining = remainingDays(day)
-    val pinned = day.priority == 2
     val cover = rememberCoverBitmap(day.cover, coverStore)
     val heroBg = if (s.isDark) Color(0xFF101318) else Ink
     val heroShape = RoundedCornerShape(30.dp)
@@ -360,11 +343,7 @@ fun HeroCard(day: Countdown, coverStore: CoverStore, onOpen: (() -> Unit)? = nul
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    if (pinned) {
-                        PillChip("置顶", s.accent, s.onAccent)
-                    } else {
-                        Sparkle(Modifier.size(22.dp), color = s.accent)
-                    }
+                    Sparkle(Modifier.size(22.dp), color = s.accent)
                 }
             }
             Spacer(Modifier.height(18.dp))

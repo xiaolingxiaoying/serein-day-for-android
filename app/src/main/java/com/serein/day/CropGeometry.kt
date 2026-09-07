@@ -11,6 +11,34 @@ data class NormalizedRect(
     val height: Float get() = bottom - top
 }
 
+/** The crop frame's normalized center, kept separate from Compose UI types for testability. */
+data class CropCenter(val x: Float, val y: Float)
+
+/** Returns whether a point in normalized preview coordinates is inside the crop frame. */
+fun NormalizedRect.contains(x: Float, y: Float): Boolean =
+    x in left..right && y in top..bottom
+
+/**
+ * Moves a crop frame while preserving its size and preventing it from leaving the visible image.
+ */
+fun moveCropCenter(
+    imageBounds: NormalizedRect,
+    crop: NormalizedRect,
+    centerX: Float,
+    centerY: Float,
+    deltaX: Float,
+    deltaY: Float
+): CropCenter = CropCenter(
+    x = (centerX + deltaX).coerceIn(
+        imageBounds.left + crop.width / 2f,
+        imageBounds.right - crop.width / 2f
+    ),
+    y = (centerY + deltaY).coerceIn(
+        imageBounds.top + crop.height / 2f,
+        imageBounds.bottom - crop.height / 2f
+    )
+)
+
 fun fittedImageBounds(
     sourceWidth: Int,
     sourceHeight: Int,

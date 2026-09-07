@@ -55,4 +55,30 @@ class CropGeometryTest {
         val physicalAspect = frame.width * (16f / 9f) / frame.height
         assertEquals(4f / 3f, physicalAspect, 0.0001f)
     }
+
+    @Test
+    fun `dragging the crop frame moves its center and clamps it inside the image`() {
+        val image = NormalizedRect(0f, 0f, 1f, 1f)
+        val crop = NormalizedRect(0.25f, 0.25f, 0.75f, 0.75f)
+
+        val moved = moveCropCenter(
+            imageBounds = image,
+            crop = crop,
+            centerX = 0.5f,
+            centerY = 0.5f,
+            deltaX = 1f,
+            deltaY = -1f
+        )
+
+        assertEquals(0.75f, moved.x, 0.0001f)
+        assertEquals(0.25f, moved.y, 0.0001f)
+    }
+
+    @Test
+    fun `crop frame hit testing only accepts points inside the frame`() {
+        val crop = NormalizedRect(0.2f, 0.3f, 0.8f, 0.7f)
+
+        assertEquals(true, crop.contains(0.5f, 0.5f))
+        assertEquals(false, crop.contains(0.1f, 0.5f))
+    }
 }

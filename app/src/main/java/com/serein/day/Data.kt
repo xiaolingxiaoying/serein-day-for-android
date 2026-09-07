@@ -315,14 +315,21 @@ class CoverStore(context: Context) {
             target.delete()
             throw error
         }
+        // New picks deliberately reuse the transient filename. Drop the old decoded bitmap
+        // before Compose asks for this name again, otherwise the prior selection is shown.
+        CoverBitmapCache.invalidate(name)
         // 清理同 base 的旧扩展名副本（保留壁纸的 <id>.w.* 文件）
-        dir.listFiles { f -> f.name.startsWith("$base.") && f.name != name && !f.name.startsWith("$base.w.") }?.forEach { it.delete() }
+        dir.listFiles { f -> f.name.startsWith("$base.") && f.name != name && !f.name.startsWith("$base.w.") }?.forEach {
+            CoverBitmapCache.invalidate(it.name)
+            it.delete()
+        }
         name
     }.getOrNull()
 
     fun resolve(name: String): File = File(dir, name)
 
     fun remove(name: String) {
+        CoverBitmapCache.invalidate(name)
         File(dir, name).delete()
     }
 
@@ -330,7 +337,10 @@ class CoverStore(context: Context) {
     fun removeByBase(base: String) {
         dir.listFiles { file ->
             file.name.substringBeforeLast('.') == base
-        }?.forEach { it.delete() }
+        }?.forEach {
+            CoverBitmapCache.invalidate(it.name)
+            it.delete()
+        }
     }
 
     /** 将编辑器中用户选定的自由裁剪区域输出为新的应用内图片。 */
@@ -348,6 +358,8 @@ class CoverStore(context: Context) {
         }
         cropped.recycle()
         source.recycle()
+        // Cropping the same image again overwrites this temporary filename.
+        CoverBitmapCache.invalidate(outName)
         outName
     }.getOrNull()
 

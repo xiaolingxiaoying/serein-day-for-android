@@ -51,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -226,6 +227,12 @@ fun ImageEditSheet(
         centerX = cropCenterX,
         centerY = cropCenterY
     )
+    // These values change while a finger is moving. Keeping them current without using them
+    // as pointerInput keys prevents Compose from cancelling and recreating the drag detector
+    // for every drag event.
+    val currentCrop by rememberUpdatedState(crop)
+    val currentCropCenterX by rememberUpdatedState(cropCenterX)
+    val currentCropCenterY by rememberUpdatedState(cropCenterY)
 
     fun saveImage() {
         if (saving || bitmap == null) return
@@ -301,18 +308,29 @@ fun ImageEditSheet(
                             .clip(RoundedCornerShape(22.dp))
                             .background(InkElevated)
                             .onSizeChanged { previewSize = it }
-                            .pointerInput(scale, crop, imageBounds) {
+                            .pointerInput(scale, imageBounds) {
                                 if (scale == ImageScaleMode.CROP) {
-                                    detectDragGestures { change, delta ->
+                                    var dragStartedInCropFrame = false
+                                    detectDragGestures(
+                                        onDragStart = { position ->
+                                            dragStartedInCropFrame = currentCrop.contains(
+                                                position.x / size.width,
+                                                position.y / size.height
+                                            )
+                                        }
+                                    ) { change, delta ->
+                                        if (!dragStartedInCropFrame) return@detectDragGestures
                                         change.consume()
-                                        cropCenterX = (cropCenterX + delta.x / size.width).coerceIn(
-                                            imageBounds.left + crop.width / 2f,
-                                            imageBounds.right - crop.width / 2f
+                                        val center = moveCropCenter(
+                                            imageBounds = imageBounds,
+                                            crop = currentCrop,
+                                            centerX = currentCropCenterX,
+                                            centerY = currentCropCenterY,
+                                            deltaX = delta.x / size.width,
+                                            deltaY = delta.y / size.height
                                         )
-                                        cropCenterY = (cropCenterY + delta.y / size.height).coerceIn(
-                                            imageBounds.top + crop.height / 2f,
-                                            imageBounds.bottom - crop.height / 2f
-                                        )
+                                        cropCenterX = center.x
+                                        cropCenterY = center.y
                                     }
                                 }
                             },
@@ -374,7 +392,7 @@ fun ImageEditSheet(
                                     modifier = Modifier.weight(1f).padding(start = 12.dp)
                                 )
                             }
-                            Text("拖动裁切框选择保留区域；滑动可放大裁切。", color = s.onSurfaceVariant, fontSize = 12.sp)
+                            Text("按住裁切框内拖动可调整位置；滑动可放大裁切。", color = s.onSurfaceVariant, fontSize = 12.sp)
                         }
                     }
 

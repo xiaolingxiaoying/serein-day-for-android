@@ -142,9 +142,7 @@ fun EditorScreen(
         TopBar(
             title = if (initial == null) "新建倒数日" else "编辑倒数日",
             leadingIcon = Icons.AutoMirrored.Filled.ArrowBack,
-            onLeading = onCancel,
-            trailingText = "保存",
-            onTrailing = { save() }
+            onLeading = onCancel
         )
         Column(
             Modifier
