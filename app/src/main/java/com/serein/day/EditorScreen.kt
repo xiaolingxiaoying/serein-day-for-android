@@ -23,17 +23,20 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,11 +51,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalDate
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private const val TitleLimit = 24
 
 /** 编辑页里正在挑选的图片来源。 */
 private enum class ImageTarget { COVER, WALLPAPER }
+private data class PendingImageEdit(
+    val target: ImageTarget,
+    val newName: String,
+    val oldName: String?,
+    val temporary: Boolean
+)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -63,6 +73,7 @@ fun EditorScreen(
     minimalMode: Boolean,
     onCancel: () -> Unit,
     onSave: (Countdown) -> Unit,
+    onAddBook: (String) -> String,
     onDelete: (() -> Unit)?
 ) {
     val s = LocalSerein.current
@@ -73,12 +84,22 @@ fun EditorScreen(
     var repeatYearly by remember(initial) { mutableStateOf(initial?.repeatYearly ?: false) }
     var bookId by remember(initial) { mutableStateOf(initial?.bookId ?: (books.firstOrNull()?.id ?: "")) }
     var cover by remember(initial) { mutableStateOf(initial?.cover) }
+    var coverScale by remember(initial) { mutableStateOf(initial?.coverScale ?: ImageScaleMode.CROP) }
+    var coverOpacity by remember(initial) { mutableStateOf(initial?.coverOpacity ?: 1f) }
     var wallpaper by remember(initial) { mutableStateOf(initial?.wallpaper) }
+    var wallpaperScale by remember(initial) { mutableStateOf(initial?.wallpaperScale ?: ImageScaleMode.CROP) }
+    var wallpaperOpacity by remember(initial) { mutableStateOf(initial?.wallpaperOpacity ?: 1f) }
     var remind by remember(initial) { mutableStateOf(initial?.remind ?: false) }
+    var dailyRemind by remember(initial) { mutableStateOf(initial?.dailyRemind ?: false) }
+    var dailyRemindTime by remember(initial) { mutableStateOf(initial?.dailyRemindTime ?: "09:00") }
+    var dailyRemindKind by remember(initial) { mutableStateOf(initial?.dailyRemindKind ?: ReminderKind.MESSAGE) }
     var pinned by remember(initial) { mutableStateOf(initial?.priority == 2) }
     var picking by remember { mutableStateOf<ImageTarget?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var addingBook by remember { mutableStateOf(false) }
+    var showDailyReminderSheet by remember { mutableStateOf(false) }
+    var pendingImageEdit by remember { mutableStateOf<PendingImageEdit?>(null) }
 
     // 新建流程先落为草稿文件，保存时由调用方改成真实事件 id
     val coverBase = initial?.id ?: "draft"
@@ -87,6 +108,8 @@ fun EditorScreen(
 
     fun save() {
         if (title.isBlank()) return
+        if (initial?.cover != null && initial.cover != cover) coverStore.remove(initial.cover)
+        if (initial?.wallpaper != null && initial.wallpaper != wallpaper) coverStore.remove(initial.wallpaper)
         onSave(
             Countdown(
                 id = initial?.id ?: newCountdownId(),
@@ -97,10 +120,17 @@ fun EditorScreen(
                 bookId = bookId,
                 notes = initial?.notes ?: emptyList(),
                 cover = cover,
+                coverScale = coverScale,
+                coverOpacity = coverOpacity,
                 wallpaper = wallpaper,
+                wallpaperScale = wallpaperScale,
+                wallpaperOpacity = wallpaperOpacity,
                 wallpaperDim = initial?.wallpaperDim,
                 subs = initial?.subs ?: emptyList(),
                 remind = remind,
+                dailyRemind = dailyRemind,
+                dailyRemindTime = dailyRemindTime,
+                dailyRemindKind = dailyRemindKind,
                 priority = if (pinned) 2 else 0,
                 archived = initial?.archived ?: false,
                 createdAt = initial?.createdAt ?: LocalDate.now()
@@ -238,14 +268,8 @@ fun EditorScreen(
                             .clickable { bookId = book.id }
                             .padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Icon(
-                            bookIcon(book.name),
-                            contentDescription = null,
-                            tint = if (bookId == book.id) OnInk else s.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
-                        )
                         Text(
                             book.name,
                             color = if (bookId == book.id) OnInk else s.onSurface,
@@ -253,6 +277,18 @@ fun EditorScreen(
                             fontWeight = if (bookId == book.id) FontWeight.Bold else FontWeight.Medium
                         )
                     }
+                }
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(cardBg)
+                        .clickable { addingBook = true }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = null, tint = s.onAccentStrong, modifier = Modifier.size(16.dp))
+                    Text("新建倒数本", color = s.onAccentStrong, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
             // 图片 / 提醒 / 置顶：一组
@@ -265,14 +301,14 @@ fun EditorScreen(
                 if (!minimalMode) {
                     ImageRow(
                         label = "封面图片",
-                        hint = if (cover != null) "已设置，卡片与详情都会使用" else "选一张喜欢的图做卡片封面",
+                        hint = if (cover != null) "已设置 · ${coverScale.label} · 透明度 ${(coverOpacity * 100).roundToInt()}%" else "选一张喜欢的图做卡片封面",
                         hasCurrent = cover != null,
                         onPick = { picking = ImageTarget.COVER }
                     )
                     HairlineInset(s)
                     ImageRow(
                         label = "详情页背景",
-                        hint = if (wallpaper != null) "已设置，详情页会铺满展示" else "给详情页也换一张壁纸",
+                        hint = if (wallpaper != null) "已设置 · ${wallpaperScale.label}" else "给详情页也换一张壁纸",
                         hasCurrent = wallpaper != null,
                         onPick = { picking = ImageTarget.WALLPAPER }
                     )
@@ -281,7 +317,21 @@ fun EditorScreen(
                         title = "开启提醒",
                         subtitle = "提前 7 天及当天 09:00 提醒",
                         checked = remind,
-                        onChecked = { remind = it }
+                        onChecked = {
+                            remind = it
+                            if (!it) dailyRemind = false
+                        }
+                    )
+                    HairlineInset(s)
+                    ToggleRow(
+                        title = "每天提醒",
+                        subtitle = "每天 $dailyRemindTime · ${dailyRemindKind.label}",
+                        checked = dailyRemind,
+                        onChecked = {
+                            dailyRemind = it
+                            if (it) remind = true
+                        },
+                        onClick = { showDailyReminderSheet = true }
                     )
                     HairlineInset(s)
                 }
@@ -330,7 +380,16 @@ fun EditorScreen(
             title = "封面图片来源",
             hasCurrent = cover != null,
             onDismiss = { picking = null },
-            onImage = { uri -> coverStore.copyIn(uri, coverBase)?.let { cover = it } },
+            onImage = { uri ->
+                val name = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    coverStore.copyIn(uri, "draft.edit.cover")
+                }
+                if (name != null) pendingImageEdit = PendingImageEdit(ImageTarget.COVER, name, cover, temporary = true)
+                name != null
+            },
+            onEditCurrent = cover?.let { current ->
+                { pendingImageEdit = PendingImageEdit(ImageTarget.COVER, current, current, temporary = false) }
+            },
             onRemove = {
                 cover?.let { coverStore.remove(it) }
                 cover = null
@@ -340,7 +399,16 @@ fun EditorScreen(
             title = "详情页背景图片来源",
             hasCurrent = wallpaper != null,
             onDismiss = { picking = null },
-            onImage = { uri -> coverStore.copyIn(uri, wallpaperBase)?.let { wallpaper = it } },
+            onImage = { uri ->
+                val name = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    coverStore.copyIn(uri, "draftw.edit.wallpaper")
+                }
+                if (name != null) pendingImageEdit = PendingImageEdit(ImageTarget.WALLPAPER, name, wallpaper, temporary = true)
+                name != null
+            },
+            onEditCurrent = wallpaper?.let { current ->
+                { pendingImageEdit = PendingImageEdit(ImageTarget.WALLPAPER, current, current, temporary = false) }
+            },
             onRemove = {
                 wallpaper?.let { coverStore.remove(it) }
                 wallpaper = null
@@ -359,6 +427,55 @@ fun EditorScreen(
             }
         )
     }
+    if (addingBook) {
+        NewBookSheet(
+            onConfirm = { name ->
+                bookId = onAddBook(name)
+                addingBook = false
+            },
+            onDismiss = { addingBook = false }
+        )
+    }
+    if (showDailyReminderSheet) {
+        DailyReminderSheet(
+            time = dailyRemindTime,
+            kind = dailyRemindKind,
+            onTimeChange = { dailyRemindTime = it },
+            onKindChange = { dailyRemindKind = it },
+            onDismiss = { showDailyReminderSheet = false }
+        )
+    }
+    pendingImageEdit?.let { pending ->
+        ImageEditSheet(
+            title = if (pending.target == ImageTarget.COVER) "编辑封面图片" else "编辑详情页背景",
+            imageName = pending.newName,
+            coverStore = coverStore,
+            initialScale = if (pending.target == ImageTarget.COVER) coverScale else wallpaperScale,
+            initialOpacity = if (pending.target == ImageTarget.COVER) coverOpacity else wallpaperOpacity,
+            targetAspectRatio = if (pending.target == ImageTarget.COVER) 4f / 3f else 9f / 16f,
+            targetLabel = if (pending.target == ImageTarget.COVER) "倒数日封面" else "详情页背景",
+            cropOutputBase = if (pending.target == ImageTarget.COVER) "draft.edit.crop.cover" else "draftw.edit.crop.wallpaper",
+            onSave = { scale, opacity, croppedName ->
+                val selectedName = croppedName ?: pending.newName
+                if (croppedName != null && pending.temporary) coverStore.remove(pending.newName)
+                if (pending.target == ImageTarget.COVER) {
+                    cover = selectedName
+                    coverScale = scale
+                    coverOpacity = opacity
+                } else {
+                    wallpaper = selectedName
+                    wallpaperScale = scale
+                    wallpaperOpacity = opacity
+                }
+                pendingImageEdit = null
+            },
+            onCancel = {
+                if (pending.temporary) coverStore.remove(pending.newName)
+                if (pending.target == ImageTarget.COVER) cover = pending.oldName else wallpaper = pending.oldName
+                pendingImageEdit = null
+            }
+        )
+    }
     if (confirmDelete) {
         IosAlertDialog(
             title = "删除「${initial?.title ?: title.trim()}」？",
@@ -371,6 +488,38 @@ fun EditorScreen(
             },
             onDismiss = { confirmDelete = false }
         )
+    }
+}
+
+/** 编辑倒数日时就地创建倒数本，创建完成后自动选中。 */
+@Composable
+private fun NewBookSheet(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+    val s = LocalSerein.current
+    var name by remember { mutableStateOf("") }
+
+    SereinSheet(
+        title = "新建倒数本",
+        onDismiss = onDismiss,
+        trailingText = "创建",
+        onTrailing = { if (name.isNotBlank()) onConfirm(name.trim()) }
+    ) {
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box {
+                if (name.isEmpty()) {
+                    Text("倒数本名称", color = s.outlineVariant, fontSize = 16.sp)
+                }
+                BasicTextField(
+                    value = name,
+                    onValueChange = { if (it.length <= 12) name = it },
+                    singleLine = true,
+                    textStyle = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium, color = s.onSurface),
+                    cursorBrush = SolidColor(s.onAccentStrong),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                )
+            }
+            Text("创建后会自动选中", color = s.onSurfaceVariant, fontSize = 12.sp)
+            Spacer(Modifier.height(4.dp))
+        }
     }
 }
 
@@ -420,12 +569,14 @@ private fun ToggleRow(
     title: String,
     subtitle: String,
     checked: Boolean,
-    onChecked: (Boolean) -> Unit
+    onChecked: (Boolean) -> Unit,
+    onClick: (() -> Unit)? = null
 ) {
     val s = LocalSerein.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
             .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -440,6 +591,36 @@ private fun ToggleRow(
             onCheckedChange = onChecked,
             colors = SwitchDefaults.colors(checkedTrackColor = s.accent, checkedThumbColor = s.onAccent)
         )
+    }
+}
+
+@Composable
+private fun DailyReminderSheet(
+    time: String,
+    kind: ReminderKind,
+    onTimeChange: (String) -> Unit,
+    onKindChange: (ReminderKind) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val s = LocalSerein.current
+    val parts = time.split(":")
+    var hour by remember(time) { mutableFloatStateOf(parts.getOrNull(0)?.toFloatOrNull()?.coerceIn(0f, 23f) ?: 9f) }
+    var minute by remember(time) { mutableFloatStateOf(parts.getOrNull(1)?.toFloatOrNull()?.coerceIn(0f, 59f) ?: 0f) }
+    SereinSheet(title = "每天提醒设置", onDismiss = onDismiss, trailingText = "完成", onTrailing = onDismiss) {
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("提醒时间", color = s.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text("%02d:%02d".format(hour.roundToInt(), minute.roundToInt()), color = s.onSurface, fontSize = 30.sp, fontWeight = FontWeight.Black)
+            Slider(value = hour, onValueChange = { hour = it; onTimeChange("%02d:%02d".format(it.roundToInt(), minute.roundToInt())) }, valueRange = 0f..23f, steps = 22)
+            Slider(value = minute, onValueChange = { minute = it; onTimeChange("%02d:%02d".format(hour.roundToInt(), it.roundToInt())) }, valueRange = 0f..59f, steps = 11)
+            Text("提醒方式", color = s.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ReminderKind.entries.forEach { option ->
+                    Text(option.label, color = if (option == kind) OnInk else s.onSurface, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (option == kind) Ink else s.highest).clickable { onKindChange(option) }.padding(horizontal = 16.dp, vertical = 10.dp))
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+        }
     }
 }
 

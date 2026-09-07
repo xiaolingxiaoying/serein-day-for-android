@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.util.Calendar
 
 /** 常驻通知：显示置顶（或最近的）倒数卡片，数据变化与跨午夜时更新。 */
 object PinnedNotification {
@@ -107,5 +108,81 @@ class MidnightReceiver : BroadcastReceiver() {
             PinnedNotification.update(context, days)
         }
         PinnedNotification.scheduleMidnightRefresh(context)
+    }
+}
+
+/** 每天提醒：按事件各自的时间与提醒类型安排下一次闹钟。 */
+object DailyReminderScheduler {
+    private const val PREFS = "daily_reminders"
+    private const val KEY_IDS = "ids"
+    const val ACTION = "com.serein.day.DAILY_REMINDER"
+
+    fun sync(context: Context, days: List<Countdown>) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val oldIds = prefs.getStringSet(KEY_IDS, emptySet()).orEmpty()
+        oldIds.forEach { cancel(context, alarm, it) }
+        val active = days.filter { it.dailyRemind && !it.archived }
+        active.forEach { schedule(context, alarm, it) }
+        prefs.edit().putStringSet(KEY_IDS, active.map { it.id }.toSet()).apply()
+    }
+
+    private fun requestCode(id: String): Int = id.hashCode() and 0x7fffffff
+
+    private fun pendingIntent(context: Context, id: String, kind: ReminderKind): PendingIntent =
+        PendingIntent.getBroadcast(
+            context, requestCode(id),
+            Intent(ACTION).setPackage(context.packageName).putExtra("dayId", id).putExtra("kind", kind.key),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+    private fun cancel(context: Context, alarm: AlarmManager, id: String) {
+        val intent = Intent(ACTION).setPackage(context.packageName)
+        val pending = PendingIntent.getBroadcast(context, requestCode(id), intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)
+        if (pending != null) alarm.cancel(pending)
+    }
+
+    private fun schedule(context: Context, alarm: AlarmManager, day: Countdown) {
+        val parts = day.dailyRemindTime.split(":")
+        val hour = parts.getOrNull(0)?.toIntOrNull()?.coerceIn(0, 23) ?: 9
+        val minute = parts.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 59) ?: 0
+        val now = Calendar.getInstance()
+        val next = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, hour); set(Calendar.MINUTE, minute); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            if (timeInMillis <= now.timeInMillis) add(Calendar.DAY_OF_YEAR, 1)
+        }
+        val pending = pendingIntent(context, day.id, day.dailyRemindKind)
+        runCatching { alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.timeInMillis, pending) }
+            .onFailure { alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.timeInMillis, pending) }
+    }
+
+    fun reschedule(context: Context, day: Countdown) {
+        val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        if (day.dailyRemind && !day.archived) schedule(context, alarm, day) else cancel(context, alarm, day.id)
+    }
+}
+
+class DailyReminderReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != DailyReminderScheduler.ACTION) return
+        val id = intent.getStringExtra("dayId") ?: return
+        val day = DayRepository(context).load().firstOrNull { it.id == id } ?: return
+        if (!day.dailyRemind || day.archived) return
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (!PinnedNotification.hasPermission(context)) return
+        val kind = ReminderKind.fromKey(intent.getStringExtra("kind"))
+        val channelId = if (kind == ReminderKind.ALARM) "daily_alarm" else "daily_message"
+        val importance = if (kind == ReminderKind.ALARM) NotificationManager.IMPORTANCE_HIGH else NotificationManager.IMPORTANCE_DEFAULT
+        manager.createNotificationChannel(NotificationChannel(channelId, kind.label, importance))
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_stat_serein)
+            .setContentTitle(day.title)
+            .setContentText("${dateText(day)} · 每日提醒")
+            .setAutoCancel(true)
+            .setCategory(if (kind == ReminderKind.ALARM) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_MESSAGE)
+            .setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+            .build()
+        manager.notify(id.hashCode(), notification)
+        DailyReminderScheduler.reschedule(context, day)
     }
 }

@@ -12,8 +12,8 @@ android {
         applicationId = "com.serein.day"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.5.2"
+        versionCode = 1
+        versionName = "0.0.1-preview"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

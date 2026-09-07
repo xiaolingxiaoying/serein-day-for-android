@@ -31,14 +31,17 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,9 +53,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -66,6 +69,13 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+private data class DetailPendingImage(
+    val cover: Boolean,
+    val newName: String,
+    val oldName: String?,
+    val temporary: Boolean
+)
 
 @Composable
 fun DetailScreen(
@@ -82,7 +92,12 @@ fun DetailScreen(
     onArchive: (String) -> Unit,
     onRestore: (String) -> Unit,
     onDelete: (String) -> Unit,
+    onCoverChange: (String?) -> Unit,
+    onCoverScaleChange: (ImageScaleMode) -> Unit,
+    onCoverOpacityChange: (Float) -> Unit,
     onWallpaperChange: (String?) -> Unit,
+    onWallpaperScaleChange: (ImageScaleMode) -> Unit,
+    onWallpaperOpacityChange: (Float) -> Unit,
     onWallpaperDimChange: (Float) -> Unit,
     onAddSubDay: (String, LocalDate) -> Unit,
     onEditSubDay: (String, String, LocalDate) -> Unit,
@@ -90,22 +105,28 @@ fun DetailScreen(
 ) {
     val s = LocalSerein.current
     var pickingWallpaper by remember { mutableStateOf(false) }
+    var pickingCover by remember { mutableStateOf(false) }
+    var pendingImage by remember { mutableStateOf<DetailPendingImage?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var detailsExpanded by remember(day.id) { mutableStateOf(false) }
     val wallpaperBitmap = rememberCoverBitmap(day.wallpaper, coverStore)
     // 壁纸压暗强度：拖动时本地实时生效，松手才落库
     var wallpaperDim by remember(day.id, day.wallpaper) { mutableFloatStateOf(day.wallpaperDim ?: 0.45f) }
+    val wallpaperOpacity = day.wallpaperOpacity ?: 1f
     val canEdit = !minimalMode && !day.archived
 
     Box(Modifier.fillMaxSize().background(s.surface)) {
         // 整页背景壁纸 + 可调压暗遮罩，保证前景文字可读
         if (wallpaperBitmap != null) {
-            Image(
-                bitmap = wallpaperBitmap,
-                contentDescription = "详情页背景",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = wallpaperDim)))
+            Box(Modifier.fillMaxSize().alpha(wallpaperOpacity)) {
+                Image(
+                    bitmap = wallpaperBitmap,
+                    contentDescription = "详情页背景",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = day.wallpaperScale.toContentScale()
+                )
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = wallpaperDim)))
+            }
         }
         Column(Modifier.fillMaxSize()) {
             DetailTopBar(
@@ -113,6 +134,9 @@ fun DetailScreen(
                 onWallpaper = wallpaperBitmap != null,
                 onBack = onBack,
                 onWallpaperClick = { pickingWallpaper = true },
+                onCoverClick = if (!day.archived) { { pickingCover = true } } else null,
+                onShare = if (!day.archived) { { onShare(day) } } else null,
+                onArchive = if (!day.archived) { { onArchive(day.id) } } else null,
                 onEdit = if (canEdit) { { onEditEvent(day) } } else null
             )
             if (day.archived) {
@@ -123,76 +147,56 @@ fun DetailScreen(
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 2.dp)
                 )
             }
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .navigationBarsPadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 20.dp, end = 20.dp, bottom = if (wallpaperBitmap != null && !day.archived) 110.dp else 32.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                MilestoneCard(day, coverStore, minimal = minimalMode)
-                if (!minimalMode) {
-                    SubDaysSection(
-                        subs = day.subs,
-                        archived = day.archived,
-                        onAdd = onAddSubDay,
-                        onEdit = onEditSubDay,
-                        onDelete = onDeleteSubDay
-                    )
-                    NotesSection(
+            if (minimalMode || detailsExpanded) {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .navigationBarsPadding()
+                        .verticalScroll(rememberScrollState())
+                        .padding(start = 20.dp, end = 20.dp, bottom = if (wallpaperBitmap != null && !day.archived) 110.dp else 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    MilestoneCard(day, coverStore, minimal = minimalMode)
+                    if (!minimalMode) {
+                        DetailToggleButton(expanded = true, onClick = { detailsExpanded = false })
+                        ProgressSection(day)
+                        SubDaysSection(
+                            subs = day.subs,
+                            archived = day.archived,
+                            onAdd = onAddSubDay,
+                            onEdit = onEditSubDay,
+                            onDelete = onDeleteSubDay
+                        )
+                        NotesSection(
+                            day = day,
+                            onPublish = onPublishNote,
+                            onEditNote = onEditNote,
+                            onDeleteNote = onDeleteNote
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    DetailActions(
                         day = day,
-                        onPublish = onPublishNote,
-                        onEditNote = onEditNote,
-                        onDeleteNote = onDeleteNote
+                        onRestore = { onRestore(day.id) },
+                        onDelete = { confirmDelete = true }
                     )
-                    ProgressSection(day)
                 }
-                Spacer(Modifier.height(6.dp))
-                DetailActions(
-                    day = day,
-                    onShare = { onShare(day) },
-                    onArchive = { onArchive(day.id) },
-                    onRestore = { onRestore(day.id) },
-                    onDelete = { confirmDelete = true }
-                )
+            } else {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    MilestoneCard(day, coverStore, minimal = false)
+                    Spacer(Modifier.height(12.dp))
+                    DetailToggleButton(expanded = false, onClick = { detailsExpanded = true })
+                }
             }
         }
 
-        // 壁纸透明度调节浮层：拖动实时预览，松手保存
-        if (wallpaperBitmap != null && !day.archived) {
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 14.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Ink.copy(alpha = 0.92f))
-                    .padding(horizontal = 16.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Outlined.Wallpaper,
-                    contentDescription = null,
-                    tint = OnInk,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("背景", color = OnInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Slider(
-                    value = wallpaperDim,
-                    onValueChange = { wallpaperDim = it },
-                    onValueChangeFinished = { onWallpaperDimChange(wallpaperDim) },
-                    valueRange = 0f..0.85f,
-                    colors = androidx.compose.material3.SliderDefaults.colors(
-                        thumbColor = s.accent,
-                        activeTrackColor = s.accent,
-                        inactiveTrackColor = Color.White.copy(alpha = 0.22f)
-                    ),
-                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
-                )
-            }
-        }
     }
 
     if (pickingWallpaper) {
@@ -201,11 +205,71 @@ fun DetailScreen(
             hasCurrent = day.wallpaper != null,
             onDismiss = { pickingWallpaper = false },
             onImage = { uri ->
-                coverStore.copyIn(uri, "${day.id}.w")?.let { onWallpaperChange(it) }
+                val name = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    coverStore.copyIn(uri, "${day.id}.edit.wallpaper")
+                }
+                if (name != null) pendingImage = DetailPendingImage(false, name, day.wallpaper, temporary = true)
+                name != null
+            },
+            onEditCurrent = day.wallpaper?.let { current ->
+                { pendingImage = DetailPendingImage(false, current, current, temporary = false) }
             },
             onRemove = {
                 day.wallpaper?.let { coverStore.remove(it) }
                 onWallpaperChange(null)
+            }
+        )
+    }
+    if (pickingCover) {
+        ImageSourceDialog(
+            title = "封面图片来源",
+            hasCurrent = day.cover != null,
+            onDismiss = { pickingCover = false },
+            onImage = { uri ->
+                val name = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    coverStore.copyIn(uri, "${day.id}.edit.cover")
+                }
+                if (name != null) pendingImage = DetailPendingImage(true, name, day.cover, temporary = true)
+                name != null
+            },
+            onEditCurrent = day.cover?.let { current ->
+                { pendingImage = DetailPendingImage(true, current, current, temporary = false) }
+            },
+            onRemove = {
+                day.cover?.let { coverStore.remove(it) }
+                onCoverChange(null)
+            }
+        )
+    }
+    pendingImage?.let { pending ->
+        ImageEditSheet(
+            title = if (pending.cover) "编辑封面图片" else "编辑详情页背景",
+            imageName = pending.newName,
+            coverStore = coverStore,
+            initialScale = if (pending.cover) day.coverScale else day.wallpaperScale,
+            initialOpacity = if (pending.cover) day.coverOpacity ?: 1f else day.wallpaperOpacity ?: 1f,
+            targetAspectRatio = if (pending.cover) 4f / 3f else 9f / 16f,
+            targetLabel = if (pending.cover) "倒数日封面" else "详情页背景",
+            cropOutputBase = "${day.id}.edit.crop.${if (pending.cover) "cover" else "wallpaper"}",
+            onSave = { scale, opacity, croppedName ->
+                if (croppedName != null) coverStore.remove(pending.newName)
+                if (pending.temporary && pending.oldName != null) coverStore.remove(pending.oldName)
+                val sourceName = croppedName ?: pending.newName
+                val needsFinalName = pending.temporary || croppedName != null
+                val finalName = if (!needsFinalName) {
+                    sourceName
+                } else if (pending.cover) {
+                    coverStore.renameDraft(day.id, sourceName)
+                } else {
+                    coverStore.renameDraft("${day.id}.w", sourceName)
+                }
+                if (pending.cover) { onCoverScaleChange(scale); onCoverOpacityChange(opacity); onCoverChange(finalName) }
+                else { onWallpaperScaleChange(scale); onWallpaperOpacityChange(opacity); onWallpaperChange(finalName) }
+                pendingImage = null
+            },
+            onCancel = {
+                if (pending.temporary) coverStore.remove(pending.newName)
+                pendingImage = null
             }
         )
     }
@@ -224,6 +288,34 @@ fun DetailScreen(
     }
 }
 
+/** 详情展开控制：收起时让主卡保持聚焦，展开后显示完整信息。 */
+@Composable
+private fun DetailToggleButton(expanded: Boolean, onClick: () -> Unit) {
+    val s = LocalSerein.current
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(s.container)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 15.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Text(
+            if (expanded) "收起详情" else "展开详情",
+            color = s.onSurface,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Icon(
+            if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+            contentDescription = null,
+            tint = s.onSurfaceVariant,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
 /** 详情顶栏：事件名做标题；有壁纸时前景改白色保证可读；右上角为青柠圆形编辑钮。 */
 @Composable
 private fun DetailTopBar(
@@ -231,10 +323,14 @@ private fun DetailTopBar(
     onWallpaper: Boolean,
     onBack: () -> Unit,
     onWallpaperClick: () -> Unit,
+    onCoverClick: (() -> Unit)?,
+    onShare: (() -> Unit)?,
+    onArchive: (() -> Unit)?,
     onEdit: (() -> Unit)?
 ) {
     val s = LocalSerein.current
     val fg = if (onWallpaper) Color.White else s.onSurface
+    var showMoreMenu by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 20.dp, top = 12.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -258,20 +354,62 @@ private fun DetailTopBar(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(if (onWallpaper) Color.White.copy(alpha = 0.85f) else s.container)
-                .clickable { onWallpaperClick() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Outlined.Wallpaper,
-                contentDescription = "更换详情页背景",
-                tint = if (onWallpaper) s.onSurface else s.primary,
-                modifier = Modifier.size(18.dp)
-            )
+        Box {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(if (onWallpaper) Color.White.copy(alpha = 0.85f) else s.container)
+                    .clickable { showMoreMenu = true },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Filled.MoreVert,
+                    contentDescription = "更多操作",
+                    tint = if (onWallpaper) s.onSurface else s.primary,
+                    modifier = Modifier.size(21.dp)
+                )
+            }
+            DropdownMenu(
+                expanded = showMoreMenu,
+                onDismissRequest = { showMoreMenu = false }
+            ) {
+                onShare?.let { share ->
+                    DropdownMenuItem(
+                        text = { Text("分享卡片") },
+                        leadingIcon = { Icon(Icons.Outlined.Share, contentDescription = null) },
+                        onClick = {
+                            showMoreMenu = false
+                            share()
+                        }
+                    )
+                }
+                onArchive?.let { archive ->
+                    DropdownMenuItem(
+                        text = { Text("封存") },
+                        leadingIcon = { Icon(Icons.Outlined.Inventory2, contentDescription = null) },
+                        onClick = {
+                            showMoreMenu = false
+                            archive()
+                        }
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text("更换详情页背景") },
+                    leadingIcon = { Icon(Icons.Outlined.Wallpaper, contentDescription = null) },
+                    onClick = {
+                        showMoreMenu = false
+                        onWallpaperClick()
+                    }
+                )
+                onCoverClick?.let { cover ->
+                    DropdownMenuItem(
+                        text = { Text("更换封面图片") },
+                        leadingIcon = { Icon(Icons.Outlined.Wallpaper, contentDescription = null) },
+                        onClick = { showMoreMenu = false; cover() }
+                    )
+                }
+            }
         }
         if (onEdit != null) {
             Spacer(Modifier.width(10.dp))
@@ -295,28 +433,11 @@ private fun DetailTopBar(
 @Composable
 private fun DetailActions(
     day: Countdown,
-    onShare: () -> Unit,
-    onArchive: () -> Unit,
     onRestore: () -> Unit,
     onDelete: () -> Unit
 ) {
     val s = LocalSerein.current
-    if (!day.archived) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SecondaryButton(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Outlined.Share,
-                text = "分享卡片",
-                onClick = onShare
-            )
-            SecondaryButton(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Outlined.Inventory2,
-                text = "封存",
-                onClick = onArchive
-            )
-        }
-    } else {
+    if (day.archived) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SecondaryButton(
                 modifier = Modifier.weight(1f),
@@ -339,7 +460,6 @@ private fun DetailActions(
 private fun MilestoneCard(day: Countdown, coverStore: CoverStore, minimal: Boolean) {
     val s = LocalSerein.current
     val remaining = remainingDays(day)
-    val cover = rememberCoverBitmap(day.cover, coverStore)
     val heroBg = if (s.isDark) Color(0xFF101318) else Ink
     val heroShape = RoundedCornerShape(30.dp)
     val heroBorder = if (s.isDark) Modifier.border(1.dp, s.outlineVariant, heroShape) else Modifier
@@ -396,100 +516,7 @@ private fun MilestoneCard(day: Countdown, coverStore: CoverStore, minimal: Boole
         return
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(heroShape)
-            .background(heroBg)
-            .then(heroBorder)
-            .padding(22.dp)
-    ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            PillChip("距离目标日", InkElevated, OnInk, fontSize = 11.5)
-            Spacer(Modifier.weight(1f))
-            Sparkle(Modifier.size(20.dp), color = s.accent)
-        }
-        Spacer(Modifier.height(12.dp))
-        Text(
-            day.title,
-            color = OnInk,
-            fontSize = 27.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-0.5).sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-        Spacer(Modifier.height(5.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Outlined.CalendarMonth,
-                contentDescription = null,
-                tint = OnInkMuted,
-                modifier = Modifier.size(14.dp)
-            )
-            Spacer(Modifier.width(5.dp))
-            Text(
-                "${dateText(day)} · ${weekdayFull(targetDate(day))}",
-                color = OnInkMuted,
-                fontSize = 13.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            ProgressArc(
-                progress = progressOf(day),
-                size = 128.dp,
-                stroke = 9.dp,
-                track = Color.White.copy(alpha = 0.14f),
-                arcColor = s.accent,
-                textColor = OnInk,
-                centerContent = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(statusWord(remaining), color = OnInkMuted, fontSize = 12.sp)
-                        Text(
-                            abs(remaining).toString(),
-                            color = s.accent,
-                            fontSize = 40.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-1.5).sp,
-                            style = TnumStyle
-                        )
-                        if (remaining != 0L) Text("天", color = OnInkMuted, fontSize = 12.sp)
-                    }
-                }
-            )
-            Spacer(Modifier.weight(1f))
-            if (cover != null) {
-                // 有封面时右侧展示圆角封面缩略
-                Box(
-                    Modifier
-                        .size(112.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                ) {
-                    CoverImage(cover, Modifier.fillMaxSize())
-                }
-            }
-        }
-        Spacer(Modifier.height(16.dp))
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(50))
-                .background(s.accent)
-                .padding(horizontal = 13.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "目标日：${targetDate(day).format(FmtDot)}（${weekdayShort(targetDate(day))}）",
-                color = s.onAccent,
-                fontSize = 12.5.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
+    HeroCard(day, coverStore)
 }
 
 /** 独立的里程碑进度区：放在小倒数日和小记之后，避免挤在主卡片里。 */

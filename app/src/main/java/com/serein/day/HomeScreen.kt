@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -310,7 +311,7 @@ private fun EmptyBook(isBook: Boolean) {
 
 /** 首页置顶的里程碑大卡：近黑底 + 青柠超大数字。 */
 @Composable
-fun HeroCard(day: Countdown, coverStore: CoverStore, onOpen: () -> Unit) {
+fun HeroCard(day: Countdown, coverStore: CoverStore, onOpen: (() -> Unit)? = null) {
     val s = LocalSerein.current
     val remaining = remainingDays(day)
     val pinned = day.priority == 2
@@ -325,12 +326,14 @@ fun HeroCard(day: Countdown, coverStore: CoverStore, onOpen: () -> Unit) {
             .clip(heroShape)
             .background(heroBg)
             .then(if (s.isDark) Modifier.border(1.dp, s.outlineVariant, heroShape) else Modifier)
-            .clickable(onClick = onOpen)
+            .clickable(enabled = onOpen != null) { onOpen?.invoke() }
     ) {
         // 封面图整卡铺底 + 压暗，保证前景数字可读
         if (cover != null) {
-            CoverImage(cover, Modifier.matchParentSize())
-            Box(Modifier.matchParentSize().background(heroBg.copy(alpha = 0.68f)))
+            Box(Modifier.matchParentSize().alpha(day.coverOpacity ?: 1f)) {
+                CoverImage(cover, Modifier.matchParentSize(), scaleMode = day.coverScale)
+                Box(Modifier.matchParentSize().background(heroBg.copy(alpha = 0.68f)))
+            }
         }
         Column(Modifier.fillMaxWidth().padding(22.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {

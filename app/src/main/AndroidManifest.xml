@@ -24,6 +24,14 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".DailyReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.serein.day.DAILY_REMINDER" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

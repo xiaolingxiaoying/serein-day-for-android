@@ -73,6 +73,9 @@ class MainActivity : ComponentActivity() {
                         PinnedNotification.cancel(context)
                     }
                 }
+                LaunchedEffect(days) {
+                    DailyReminderScheduler.sync(context, days)
+                }
                 CompositionLocalProvider(LocalHapticsEnabled provides haptics) {
                     SereinApp(
                         days = days,
@@ -206,8 +209,8 @@ private fun SereinApp(
                     coverStore = coverStore,
                     minimalMode = minimalMode,
                     onCancel = {
-                        // 新建流程取消时清理未落地的草稿图片
-                        if (editing == null) coverStore.removeDrafts()
+                        // 新建和编辑流程取消时都清理未落地的图片副本。
+                        coverStore.removeDrafts()
                         adding = false
                         editing = null
                     },
@@ -229,6 +232,16 @@ private fun SereinApp(
                         }
                         adding = false
                         editing = null
+                    },
+                    onAddBook = { name ->
+                        val existing = books.firstOrNull { it.name.equals(name, ignoreCase = true) }
+                        if (existing != null) {
+                            existing.id
+                        } else {
+                            val book = Book(DayRepository.newBookId(), name)
+                            onBooksChange(books + book)
+                            book.id
+                        }
                     },
                     onDelete = editorDay?.let { day ->
                         {
@@ -286,8 +299,23 @@ private fun SereinApp(
                                 detailId = null
                                 Toast.makeText(context, "已彻底删除", Toast.LENGTH_SHORT).show()
                             },
+                            onCoverChange = { name ->
+                                mutateDay(detailDay.id) { it.copy(cover = name) }
+                            },
+                            onCoverScaleChange = { scale ->
+                                mutateDay(detailDay.id) { it.copy(coverScale = scale) }
+                            },
+                            onCoverOpacityChange = { opacity ->
+                                mutateDay(detailDay.id) { it.copy(coverOpacity = opacity) }
+                            },
                             onWallpaperChange = { name ->
                                 mutateDay(detailDay.id) { it.copy(wallpaper = name) }
+                            },
+                            onWallpaperScaleChange = { scale ->
+                                mutateDay(detailDay.id) { it.copy(wallpaperScale = scale) }
+                            },
+                            onWallpaperOpacityChange = { opacity ->
+                                mutateDay(detailDay.id) { it.copy(wallpaperOpacity = opacity) }
                             },
                             onWallpaperDimChange = { dim ->
                                 mutateDay(detailDay.id) { it.copy(wallpaperDim = dim) }

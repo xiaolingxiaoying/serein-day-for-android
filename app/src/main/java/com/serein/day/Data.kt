@@ -1,6 +1,10 @@
 package com.serein.day
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.net.Uri
 import org.json.JSONArray
 import org.json.JSONObject
@@ -25,6 +29,27 @@ data class Book(val id: String, val name: String)
 /** 列表排序方式（Days Matter 式：置顶始终在最前）。 */
 enum class SortOrder { BY_REMAINING, BY_DATE, BY_CREATED }
 
+enum class ReminderKind(val key: String, val label: String) {
+    MESSAGE("message", "信息提醒"),
+    ALARM("alarm", "闹钟提醒");
+
+    companion object { fun fromKey(key: String?): ReminderKind = entries.firstOrNull { it.key == key } ?: MESSAGE }
+}
+
+/** 背景图在卡片或页面中的缩放方式。key 用于稳定持久化，避免枚举改名破坏旧数据。 */
+enum class ImageScaleMode(val key: String, val label: String) {
+    CROP("crop", "裁剪填满"),
+    FIT("fit", "完整显示"),
+    FILL("fill", "拉伸填充"),
+    WIDTH("width", "适应宽度"),
+    HEIGHT("height", "适应高度"),
+    INSIDE("inside", "原图居中");
+
+    companion object {
+        fun fromKey(key: String?): ImageScaleMode = entries.firstOrNull { it.key == key } ?: CROP
+    }
+}
+
 /** 小倒数日：挂在某个倒数事件下的子节点（如「报名」「打印准考证」），只记标题与日期。 */
 data class SubDay(
     val id: String,
@@ -48,10 +73,17 @@ data class Countdown(
     val bookId: String = "",
     val notes: List<Note> = emptyList(),
     val cover: String? = null,
+    val coverScale: ImageScaleMode = ImageScaleMode.CROP,
+    val coverOpacity: Float? = null,
     val wallpaper: String? = null,
+    val wallpaperScale: ImageScaleMode = ImageScaleMode.CROP,
+    val wallpaperOpacity: Float? = null,
     val wallpaperDim: Float? = null,
     val subs: List<SubDay> = emptyList(),
     val remind: Boolean = false,
+    val dailyRemind: Boolean = false,
+    val dailyRemindTime: String = "09:00",
+    val dailyRemindKind: ReminderKind = ReminderKind.MESSAGE,
     val priority: Int = 0,
     val archived: Boolean = false,
     val createdAt: LocalDate? = null
@@ -118,10 +150,17 @@ class DayRepository(context: Context) {
                 bookId = bookId,
                 notes = parsedNotes,
                 cover = item.optString("cover").takeIf { it.isNotEmpty() },
+                coverScale = ImageScaleMode.fromKey(item.optString("coverScale")),
+                coverOpacity = item.optDouble("coverOpacity").takeIf { !it.isNaN() }?.toFloat()?.coerceIn(0.1f, 1f),
                 wallpaper = item.optString("wallpaper").takeIf { it.isNotEmpty() },
+                wallpaperScale = ImageScaleMode.fromKey(item.optString("wallpaperScale")),
+                wallpaperOpacity = item.optDouble("wallpaperOpacity").takeIf { !it.isNaN() }?.toFloat()?.coerceIn(0.1f, 1f),
                 wallpaperDim = item.optDouble("wallpaperDim").takeIf { !it.isNaN() }?.toFloat()?.coerceIn(0f, 0.85f),
                 subs = subs,
                 remind = item.optBoolean("remind"),
+                dailyRemind = item.optBoolean("dailyRemind"),
+                dailyRemindTime = item.optString("dailyRemindTime", "09:00").takeIf { it.matches(Regex("\\d{2}:\\d{2}")) } ?: "09:00",
+                dailyRemindKind = ReminderKind.fromKey(item.optString("dailyRemindKind")),
                 priority = if (item.optBoolean("pinned")) 2 else item.optInt("priority", 0),
                 archived = item.optBoolean("archived"),
                 createdAt = createdAt
@@ -206,9 +245,16 @@ class DayRepository(context: Context) {
                     put("notes", notes)
                     put("subs", subs)
                     day.cover?.let { put("cover", it) }
+                    put("coverScale", day.coverScale.key)
+                    day.coverOpacity?.let { put("coverOpacity", it.toDouble()) }
                     day.wallpaper?.let { put("wallpaper", it) }
+                    put("wallpaperScale", day.wallpaperScale.key)
+                    day.wallpaperOpacity?.let { put("wallpaperOpacity", it.toDouble()) }
                     day.wallpaperDim?.let { put("wallpaperDim", it.toDouble()) }
                     put("remind", day.remind)
+                    put("dailyRemind", day.dailyRemind)
+                    put("dailyRemindTime", day.dailyRemindTime)
+                    put("dailyRemindKind", day.dailyRemindKind.key)
                     put("priority", day.priority)
                     put("pinned", day.priority == 2)
                     put("archived", day.archived)
@@ -246,7 +292,14 @@ class CoverStore(context: Context) {
         }
         val name = "$base.$ext"
         val target = File(dir, name)
-        target.outputStream().use { out -> resolver.openInputStream(uri)?.use { it.copyTo(out) } }
+        try {
+            val input = resolver.openInputStream(uri) ?: return@runCatching null
+            target.outputStream().use { out -> input.use { it.copyTo(out) } }
+            check(target.length() > 0L) { "Selected image is empty" }
+        } catch (error: Throwable) {
+            target.delete()
+            throw error
+        }
         // 清理同 base 的旧扩展名副本（保留壁纸的 <id>.w.* 文件）
         dir.listFiles { f -> f.name.startsWith("$base.") && f.name != name && !f.name.startsWith("$base.w.") }?.forEach { it.delete() }
         name
@@ -258,19 +311,77 @@ class CoverStore(context: Context) {
         File(dir, name).delete()
     }
 
+    /** 将编辑器中用户选定的自由裁剪区域输出为新的应用内图片。 */
+    fun cropTo(name: String, outputBase: String, left: Float, top: Float, right: Float, bottom: Float): String? = runCatching {
+        val source = decodeSampledOrientedBitmap(File(dir, name), maxDimension = 4096) ?: return@runCatching null
+        val l = (source.width * left.coerceIn(0f, 1f)).toInt().coerceIn(0, source.width - 1)
+        val t = (source.height * top.coerceIn(0f, 1f)).toInt().coerceIn(0, source.height - 1)
+        val r = (source.width * right.coerceIn(0f, 1f)).toInt().coerceIn(l + 1, source.width)
+        val b = (source.height * bottom.coerceIn(0f, 1f)).toInt().coerceIn(t + 1, source.height)
+        val cropped = Bitmap.createBitmap(source, l, t, r - l, b - t)
+        val hasAlpha = cropped.hasAlpha()
+        val outName = "$outputBase.${if (hasAlpha) "png" else "jpg"}"
+        File(dir, outName).outputStream().use {
+            cropped.compress(if (hasAlpha) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG, 95, it)
+        }
+        cropped.recycle()
+        source.recycle()
+        outName
+    }.getOrNull()
+
     /** 新建流程中图片先落为 draft.* / draftw.*，保存时改为真实事件 id。 */
     fun renameDraft(base: String, draftName: String): String {
         val ext = draftName.substringAfterLast('.', "jpg")
-        val target = "$base.$ext"
+        // A unique name makes Compose bitmap state and the in-memory cache observe replacements.
+        val target = "$base.${UUID.randomUUID().toString().substring(0, 8)}.$ext"
         if (File(dir, draftName).renameTo(File(dir, target))) return target
         return draftName
     }
 
     /** 清理编辑流程遗留的草稿图片（取消、保存后或删除后调用）。 */
     fun removeDrafts() {
-        dir.listFiles { f -> f.name.startsWith("draft.") || f.name.startsWith("draftw.") }?.forEach { it.delete() }
+        dir.listFiles { f -> f.name.startsWith("draft.") || f.name.startsWith("draftw.") || f.name.contains(".edit.") }?.forEach { it.delete() }
     }
 }
+
+/** Decode a bounded bitmap and apply the camera/gallery EXIF transform before preview or crop. */
+fun decodeSampledOrientedBitmap(file: File, maxDimension: Int): Bitmap? = runCatching {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(file.absolutePath, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
+    var sample = 1
+    while (maxOf(bounds.outWidth / (sample * 2), bounds.outHeight / (sample * 2)) >= maxDimension) {
+        sample *= 2
+    }
+    val decoded = BitmapFactory.decodeFile(
+        file.absolutePath,
+        BitmapFactory.Options().apply { inSampleSize = sample }
+    ) ?: return@runCatching null
+    val orientation = runCatching {
+        ExifInterface(file.absolutePath).getAttributeInt(
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.ORIENTATION_NORMAL
+        )
+    }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
+    val matrix = Matrix().apply {
+        when (orientation) {
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> postScale(-1f, 1f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> postRotate(180f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> postScale(1f, -1f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> { postRotate(90f); postScale(-1f, 1f) }
+            ExifInterface.ORIENTATION_ROTATE_90 -> postRotate(90f)
+            ExifInterface.ORIENTATION_TRANSVERSE -> { postRotate(-90f); postScale(-1f, 1f) }
+            ExifInterface.ORIENTATION_ROTATE_270 -> postRotate(-90f)
+        }
+    }
+    if (matrix.isIdentity) {
+        decoded
+    } else {
+        Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true).also {
+            if (it !== decoded) decoded.recycle()
+        }
+    }
+}.getOrNull()
 
 val FmtCn = DateTimeFormatter.ofPattern("yyyy年M月d日")
 val FmtDot = DateTimeFormatter.ofPattern("yyyy.MM.dd")

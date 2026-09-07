@@ -1,6 +1,5 @@
 package com.serein.day
 
-import android.graphics.BitmapFactory
 import android.provider.Settings
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
@@ -342,10 +341,10 @@ fun Sparkle(modifier: Modifier = Modifier, color: Color = AcidLime) {
 private fun DrawScope.drawSparkle(cx: Float, cy: Float, r: Float, color: Color, filled: Boolean) {
     val path = Path().apply {
         moveTo(cx, cy - r)
-        quadraticBezierTo(cx + r * 0.14f, cy - r * 0.14f, cx + r, cy)
-        quadraticBezierTo(cx + r * 0.14f, cy + r * 0.14f, cx, cy + r)
-        quadraticBezierTo(cx - r * 0.14f, cy + r * 0.14f, cx - r, cy)
-        quadraticBezierTo(cx - r * 0.14f, cy - r * 0.14f, cx, cy - r)
+        quadraticTo(cx + r * 0.14f, cy - r * 0.14f, cx + r, cy)
+        quadraticTo(cx + r * 0.14f, cy + r * 0.14f, cx, cy + r)
+        quadraticTo(cx - r * 0.14f, cy + r * 0.14f, cx - r, cy)
+        quadraticTo(cx - r * 0.14f, cy - r * 0.14f, cx, cy - r)
         close()
     }
     if (filled) drawPath(path, color) else drawPath(path, color, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
@@ -369,13 +368,7 @@ private object CoverBitmapCache {
         cache.get(name)?.let { return it }
         val file: File = coverStore.resolve(name)
         if (!file.exists()) return null
-        val bitmap = runCatching {
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeFile(file.absolutePath, bounds)
-            var sample = 1
-            while (bounds.outWidth / (sample * 2) >= MAX_DIMEN || bounds.outHeight / (sample * 2) >= MAX_DIMEN) sample *= 2
-            BitmapFactory.decodeFile(file.absolutePath, BitmapFactory.Options().apply { inSampleSize = sample })
-        }.getOrNull() ?: return null
+        val bitmap = decodeSampledOrientedBitmap(file, MAX_DIMEN) ?: return null
         val imageBitmap = bitmap.asImageBitmap()
         cache.put(name, imageBitmap)
         return imageBitmap
@@ -433,15 +426,30 @@ fun EmptyArchive() {
     }
 }
 
-/** 图片填充。 */
+/** 将持久化的图片显示方式映射到 Compose。 */
+fun ImageScaleMode.toContentScale(): ContentScale = when (this) {
+    ImageScaleMode.CROP -> ContentScale.Crop
+    ImageScaleMode.FIT -> ContentScale.Fit
+    ImageScaleMode.FILL -> ContentScale.FillBounds
+    ImageScaleMode.WIDTH -> ContentScale.FillWidth
+    ImageScaleMode.HEIGHT -> ContentScale.FillHeight
+    ImageScaleMode.INSIDE -> ContentScale.Inside
+}
+
+/** 背景图片；默认裁剪铺满，也支持完整、拉伸、按宽高适配与原图居中。 */
 @Composable
-fun CoverImage(bitmap: androidx.compose.ui.graphics.ImageBitmap?, modifier: Modifier = Modifier, contentDescription: String? = null) {
+fun CoverImage(
+    bitmap: androidx.compose.ui.graphics.ImageBitmap?,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+    scaleMode: ImageScaleMode = ImageScaleMode.CROP
+) {
     if (bitmap != null) {
         Image(
             bitmap = bitmap,
             contentDescription = contentDescription,
             modifier = modifier,
-            contentScale = ContentScale.Crop
+            contentScale = scaleMode.toContentScale()
         )
     }
 }

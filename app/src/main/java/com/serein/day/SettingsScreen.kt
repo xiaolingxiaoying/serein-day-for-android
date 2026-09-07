@@ -254,7 +254,7 @@ fun SettingsTab(
             SettingsGroup {
                 SettingsRow(
                     title = "关于 Serein Day",
-                    subtitle = "v1.5.2 Acid Lime · Days Matter 式",
+                    subtitle = "v0.0.1-preview Acid Lime · Days Matter 式",
                     trailing = { Chevron() },
                     onClick = { showAbout = true }
                 )
@@ -297,7 +297,7 @@ fun SettingsTab(
     if (showAbout) {
         IosAlertDialog(
             title = "关于 Serein Day",
-            message = "Serein Day v1.5.2\nAcid Lime 设计系统 · Material 3\n\n一个简约的倒数日应用：Off-white 底 + 黑色大卡 + 荧光青柠，把重要的日子留在眼前。",
+            message = "Serein Day v0.0.1-preview\nAcid Lime 设计系统 · Material 3\n\n一个简约的倒数日应用：Off-white 底 + 黑色大卡 + 荧光青柠，把重要的日子留在眼前。",
             confirmText = "好的",
             dismissText = null,
             onConfirm = { showAbout = false },
