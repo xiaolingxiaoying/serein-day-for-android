@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -339,14 +341,22 @@ fun WheelColumn(
             .distinctUntilChanged()
             .collect { onSelected(it) }
     }
-    // 滚轮划过每一格时轻点一下（可在设置中关闭）
+    // 滚轮划过每一格时轻点一下（可在设置中关闭）。按 ~50ms 节流：快滑/飞滑瞬间不再逐格触感，
+    // 避免触感回调密集落在主线程形成卡段。
     val view = LocalView.current
     val hapticsOn = LocalHapticsEnabled.current
     LaunchedEffect(hapticsOn) {
         if (!hapticsOn) return@LaunchedEffect
+        var lastTick = 0L
         snapshotFlow { state.firstVisibleItemIndex }
             .distinctUntilChanged()
-            .collect { view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK) }
+            .collect {
+                val now = android.os.SystemClock.uptimeMillis()
+                if (now - lastTick >= 50) {
+                    lastTick = now
+                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                }
+            }
     }
 
     Box(modifier.height(itemHeight * visibleCount)) {
@@ -421,53 +431,90 @@ fun WheelDatePickerSheet(
     // 月份变化导致当天数超出时收拢
     LaunchedEffect(maxDay) { if (day > maxDay) day = maxDay }
 
-    SereinSheet(
-        title = title,
-        onDismiss = onDismiss,
-        leadingText = "取消",
-        onLeading = onDismiss,
-        trailingText = "确定",
-        onTrailing = {
-            onConfirm(LocalDate.of(year, month, day.coerceAtMost(maxDay)))
-        }
+    // 不用 ModalBottomSheet：滚轮列需要纵向手势，而 BottomSheet 自身也拦截纵向拖拽，
+    // 两条手势管道抢同一根手指造成滚轮「卡段」。改为 Dialog 实现同款底部弹层外观，
+    // 语法上彻底去掉 ModalBottomSheet 的嵌套滚动/拖拽机制。
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
-        val weekday = remember(year, month, day, maxDay) {
-            val safe = day.coerceAtMost(maxDay)
-            weekdayFull(LocalDate.of(year, month, safe))
-        }
-        Text(
-            "${year}年${month}月${day.coerceAtMost(maxDay)}日 · $weekday",
-            color = s.primary,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(4.dp))
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Box(Modifier.weight(1.2f)) {
-                WheelColumn(
-                    items = years,
-                    startIndex = year - 1900,
-                    onSelected = { year = 1900 + it }
+        Box(Modifier.fillMaxSize()) {
+            // 遮罩点击关闭（ModalBottomSheet 同款行为）
+            Box(
+                Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)).clickable { onDismiss() }
+            )
+            Column(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
+                    .background(if (s.isDark) s.container else Color.White)
+                    // 消费面板空白处点击，避免点击落到底下遮罩直接关闭（保留遮罩点击关场）
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
+                    .navigationBarsPadding()
+                    .padding(top = 14.dp, bottom = 18.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "取消",
+                        color = s.onSurfaceVariant,
+                        fontSize = 14.5.sp,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { onDismiss() }.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        Text(title, color = s.onSurface, fontSize = 16.5.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    Text(
+                        "确定",
+                        color = s.primary,
+                        fontSize = 14.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { onConfirm(LocalDate.of(year, month, day.coerceAtMost(maxDay))) }.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                val weekday = remember(year, month, day, maxDay) {
+                    val safe = day.coerceAtMost(maxDay)
+                    weekdayFull(LocalDate.of(year, month, safe))
+                }
+                Text(
+                    "${year}年${month}月${day.coerceAtMost(maxDay)}日 · $weekday",
+                    color = s.primary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
-            }
-            Box(Modifier.weight(1f)) {
-                WheelColumn(
-                    items = months,
-                    startIndex = month - 1,
-                    onSelected = { month = it + 1 }
-                )
-            }
-            Box(Modifier.weight(1f)) {
-                WheelColumn(
-                    items = days,
-                    startIndex = (day - 1).coerceIn(0, maxDay - 1),
-                    onSelected = { day = it + 1 }
-                )
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(Modifier.weight(1.2f)) {
+                        WheelColumn(
+                            items = years,
+                            startIndex = year - 1900,
+                            onSelected = { year = 1900 + it }
+                        )
+                    }
+                    Box(Modifier.weight(1f)) {
+                        WheelColumn(
+                            items = months,
+                            startIndex = month - 1,
+                            onSelected = { month = it + 1 }
+                        )
+                    }
+                    Box(Modifier.weight(1f)) {
+                        WheelColumn(
+                            items = days,
+                            startIndex = (day - 1).coerceIn(0, maxDay - 1),
+                            onSelected = { day = it + 1 }
+                        )
+                    }
+                }
             }
         }
     }

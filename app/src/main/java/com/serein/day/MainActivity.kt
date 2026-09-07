@@ -9,9 +9,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -42,6 +43,7 @@ import androidx.compose.ui.zIndex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 
@@ -140,6 +142,7 @@ private fun SereinApp(
 ) {
     val s = LocalSerein.current
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var showSettings by remember { mutableStateOf(false) }
     var adding by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Countdown?>(null) }
@@ -169,6 +172,17 @@ private fun SereinApp(
         onDaysChange(days.map { if (it.id == id) transform(it) else it })
     }
 
+    /** 打开详情前在后台预热封面与壁纸：转场进入时位图已就绪，不再这一帧纯色、下一帧突现导致闪变/撕裂。 */
+    fun openDetail(id: String) {
+        days.find { it.id == id }?.let { d ->
+            scope.launch {
+                prewarmCover(d.cover, coverStore)
+                prewarmCover(d.wallpaper, coverStore)
+            }
+        }
+        detailId = id
+    }
+
     /** 页面栈深度：Main(0) → Settings(1) → Archive(2) → Detail(3) → Editor(4)，越深越靠顶层。 */
     fun depthOf(screen: Screen): Int = when (screen) {
         Screen.Main -> 0
@@ -194,12 +208,20 @@ private fun SereinApp(
                 if (reducedMotion) {
                     fadeIn(snap()).togetherWith(fadeOut(snap()))
                 } else {
-                    // iOS push/pop：进栈新页整幅自右滑入、旧页视差退后；出栈旧页自右滑出、父页归位。
-                    // 临界阻尼弹簧（damping 1.0）保证中途可被打断并继承速度；刚度 400 让转场更干脆，
-                    // 双屏同绘的窗口更短，弱设备掉帧更少。
-                    val move: SpringSpec<IntOffset> = spring(dampingRatio = 1f, stiffness = 400f)
-                    val into = if (forward) slideInHorizontally(move) { it } else slideInHorizontally(move) { -it / 4 }
-                    val outOf = if (forward) slideOutHorizontally(move) { -it / 4 } else slideOutHorizontally(move) { it }
+                    // 转场去双绘：全宽对开滑动改为「短距滑动 + 淡入淡出」。两页整幅同时平移/重叠的窗口
+                    // 与边界错位感都显著降低，弱设备转场不再撕裂；方向仍按进/出栈保留。用固定时长 tween
+                    // 取代弹簧，让帧预算更可控、且两页 alpha 在同一帧内完成（去掉硬件层错开产生的撕裂）。
+                    val move = tween<IntOffset>(220, easing = FastOutSlowInEasing)
+                    val intoFade = fadeIn(tween(200))
+                    val outFade = fadeOut(tween(160))
+                    val into = if (forward)
+                        (intoFade + slideInHorizontally(move) { it / 3 })
+                    else
+                        (intoFade + slideInHorizontally(move) { -it / 3 })
+                    val outOf = if (forward)
+                        (outFade + slideOutHorizontally(move) { -it / 3 })
+                    else
+                        (outFade + slideOutHorizontally(move) { it / 3 })
                     into.togetherWith(outOf)
                 }
             },
@@ -378,7 +400,7 @@ private fun SereinApp(
                     books = books,
                     onBack = { showArchive = false },
                     // 保留归档栈位：详情返回时回到归档页（清掉 showArchive 会跳回设置页）
-                    onOpen = { detailId = it },
+                    onOpen = { openDetail(it) },
                     coverStore = coverStore
                 )
                 Screen.Main -> MainScreen(
@@ -390,7 +412,7 @@ private fun SereinApp(
                     selectedBookId = selectedBookId,
                     onSelectedBookChange = { selectedBookId = it },
                     onManageBooks = { showBookManager = true },
-                    onOpenDetail = { detailId = it },
+                    onOpenDetail = { openDetail(it) },
                     onOpenSettings = { showSettings = true },
                     onAdd = { adding = true }
                 )

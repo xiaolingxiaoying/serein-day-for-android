@@ -375,6 +375,17 @@ private object CoverBitmapCache {
     }
 }
 
+/**
+ * 进界面/转场前预热封面或壁纸：在 IO 线程预先解码并写入内存缓存。
+ * 之后 rememberCoverBitmap 命中缓存即同步返回，避免转场中位图「啪地出现」造成闪变/撕裂。
+ */
+suspend fun prewarmCover(name: String?, coverStore: CoverStore) {
+    if (name == null) return
+    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        CoverBitmapCache.load(name, coverStore)
+    }
+}
+
 /** 加载封面副本为位图：IO 线程解码、主线程零阻塞，命中缓存即同步返回。 */
 @Composable
 fun rememberCoverBitmap(cover: String?, coverStore: CoverStore): androidx.compose.ui.graphics.ImageBitmap? {
