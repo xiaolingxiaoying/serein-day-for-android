@@ -269,6 +269,9 @@ fun DetailScreen(
             },
             onCancel = {
                 if (pending.temporary) coverStore.remove(pending.newName)
+                // cropTo writes a second temporary file. It must be removed as well
+                // when the user backs out before the result is attached to the event.
+                coverStore.removeByBase("${day.id}.edit.crop.${if (pending.cover) "cover" else "wallpaper"}")
                 pendingImage = null
             }
         )

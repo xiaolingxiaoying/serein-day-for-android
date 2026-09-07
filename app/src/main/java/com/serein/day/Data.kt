@@ -282,6 +282,14 @@ class CoverStore(context: Context) {
     private val resolver = context.applicationContext.contentResolver
     private val dir = File(context.filesDir, "covers").apply { mkdirs() }
 
+    init {
+        // Image picking/cropping is intentionally transactional. If the process is
+        // killed while the editor is open, no UI callback gets a chance to clean up.
+        // Transient files are never referenced by persisted Countdown records, so it
+        // is safe to remove them when the store is created.
+        removeTransientFiles()
+    }
+
     /** 从内容 URI 复制副本，返回文件名。base 为「id」或「id.w」。 */
     fun copyIn(uri: Uri, base: String): String? = runCatching {
         val ext = when (resolver.getType(uri)) {
@@ -309,6 +317,13 @@ class CoverStore(context: Context) {
 
     fun remove(name: String) {
         File(dir, name).delete()
+    }
+
+    /** Remove all files generated during an unfinished pick/edit transaction. */
+    fun removeByBase(base: String) {
+        dir.listFiles { file ->
+            file.name.substringBeforeLast('.') == base
+        }?.forEach { it.delete() }
     }
 
     /** 将编辑器中用户选定的自由裁剪区域输出为新的应用内图片。 */
@@ -340,7 +355,16 @@ class CoverStore(context: Context) {
 
     /** 清理编辑流程遗留的草稿图片（取消、保存后或删除后调用）。 */
     fun removeDrafts() {
-        dir.listFiles { f -> f.name.startsWith("draft.") || f.name.startsWith("draftw.") || f.name.contains(".edit.") }?.forEach { it.delete() }
+        removeTransientFiles()
+    }
+
+    private fun removeTransientFiles() {
+        dir.listFiles { f ->
+            f.name.startsWith("draft.") ||
+                f.name.startsWith("draftw.") ||
+                f.name.contains(".edit.") ||
+                f.name.contains(".edit.crop.")
+        }?.forEach { it.delete() }
     }
 }
 
