@@ -298,19 +298,25 @@ private fun EmptyBook(isBook: Boolean) {
 
 /** 首页置顶的里程碑大卡：近黑底 + 青柠超大数字。 */
 @Composable
-fun HeroCard(day: Countdown, coverStore: CoverStore, onOpen: (() -> Unit)? = null) {
+fun HeroCard(
+    day: Countdown,
+    coverStore: CoverStore,
+    transparent: Boolean = false,
+    onOpen: (() -> Unit)? = null
+) {
     val s = LocalSerein.current
     val remaining = remainingDays(day)
     val cover = rememberCoverBitmap(day.cover, coverStore)
     val heroBg = if (s.isDark) Color(0xFF101318) else Ink
     val heroShape = RoundedCornerShape(30.dp)
+    val backgroundAlpha = if (transparent) 0.46f else 1f
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .pressScale(0.98f)
             .clip(heroShape)
-            .background(heroBg)
+            .background(heroBg.copy(alpha = backgroundAlpha))
             .then(if (s.isDark) Modifier.border(1.dp, s.outlineVariant, heroShape) else Modifier)
             .clickable(enabled = onOpen != null) { onOpen?.invoke() }
     ) {
@@ -318,7 +324,7 @@ fun HeroCard(day: Countdown, coverStore: CoverStore, onOpen: (() -> Unit)? = nul
         if (cover != null) {
             Box(Modifier.matchParentSize().alpha(day.coverOpacity ?: 1f)) {
                 CoverImage(cover, Modifier.matchParentSize(), scaleMode = day.coverScale)
-                Box(Modifier.matchParentSize().background(heroBg.copy(alpha = 0.68f)))
+                Box(Modifier.matchParentSize().background(heroBg.copy(alpha = if (transparent) 0.36f else 0.68f)))
             }
         }
         Column(Modifier.fillMaxWidth().padding(22.dp)) {

@@ -1,5 +1,10 @@
 package com.serein.day
 
+import android.app.AlarmManager
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -327,7 +332,20 @@ fun EditorScreen(
                         checked = dailyRemind,
                         onChecked = {
                             dailyRemind = it
-                            if (it) remind = true
+                            if (it) {
+                                remind = true
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    val alarm = context.getSystemService(AlarmManager::class.java)
+                                    if (!alarm.canScheduleExactAlarms()) {
+                                        runCatching {
+                                            context.startActivity(
+                                                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                                                    .setData(Uri.parse("package:${context.packageName}"))
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         },
                         onClick = { showDailyReminderSheet = true }
                     )

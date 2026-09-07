@@ -89,6 +89,7 @@ fun SettingsTab(
     var showPrivacy by remember { mutableStateOf(false) }
     var showCustomColor by remember { mutableStateOf(false) }
     var showSortOrder by remember { mutableStateOf(false) }
+    var showWidgetHelp by remember { mutableStateOf(false) }
 
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) onPinnedNotifChange(true)
@@ -224,6 +225,13 @@ fun SettingsTab(
                         )
                     }
                 )
+                GroupDivider()
+                SettingsRow(
+                    title = "桌面小组件",
+                    subtitle = "添加详情卡片样式的倒数组件",
+                    trailing = { Chevron() },
+                    onClick = { showWidgetHelp = true }
+                )
             }
 
             SettingsSectionLabel("数据管理")
@@ -302,6 +310,15 @@ fun SettingsTab(
             dismissText = null,
             onConfirm = { showAbout = false },
             onDismiss = null
+        )
+    }
+    if (showWidgetHelp) {
+        IosAlertDialog(
+            title = "添加桌面小组件",
+            message = "1. 返回手机桌面并长按空白处。\n2. 选择“添加小部件”或“组件”。\n3. 搜索 Serein Day，将倒数日组件拖到桌面。\n\n组件会优先显示置顶倒数日；没有置顶项时显示最近目标日。",
+            confirmText = "知道了",
+            onConfirm = { showWidgetHelp = false },
+            onDismiss = { showWidgetHelp = false }
         )
     }
     if (showPrivacy) {

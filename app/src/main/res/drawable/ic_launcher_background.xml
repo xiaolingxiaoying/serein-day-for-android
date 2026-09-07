@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 应用图标背景：银灰对角渐变（高级清冷底色，标注见 docs/DESIGN.md） -->
+<!-- 应用图标背景：与前景圆角卡片统一的暖白色，避免外层与内层出现割裂的色块 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -14,8 +14,8 @@
                 android:startY="0"
                 android:endX="108"
                 android:endY="108"
-                android:startColor="#F8F9FB"
-                android:endColor="#E4E8EE" />
+                android:startColor="#FFFDF9"
+                android:endColor="#F7F0E8" />
         </aapt:attr>
     </path>
 </vector>

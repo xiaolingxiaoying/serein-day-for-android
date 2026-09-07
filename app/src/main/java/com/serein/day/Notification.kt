@@ -55,10 +55,7 @@ object PinnedNotification {
         }
         ensureChannel(context)
         val remaining = remainingDays(pinned, today)
-        val title = when {
-            pinned.priority == 2 -> "📌 ${pinned.title}"
-            else -> pinned.title
-        }
+        val title = pinned.title
         val text = "${statusWord(remaining)} ${kotlin.math.abs(remaining)} 天 · ${dateText(pinned)}"
         val intent = PendingIntent.getActivity(
             context,
@@ -107,6 +104,7 @@ class MidnightReceiver : BroadcastReceiver() {
         if (context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("pinnedNotif", false)) {
             PinnedNotification.update(context, days)
         }
+        CountdownWidget.update(context, days)
         PinnedNotification.scheduleMidnightRefresh(context)
     }
 }
@@ -184,5 +182,21 @@ class DailyReminderReceiver : BroadcastReceiver() {
             .build()
         manager.notify(id.hashCode(), notification)
         DailyReminderScheduler.reschedule(context, day)
+    }
+}
+
+/** 设备重启或重新授予精确闹钟权限后，按本地数据恢复提醒与常驻通知。 */
+class ReminderRestoreReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val action = intent.action
+        if (action != Intent.ACTION_BOOT_COMPLETED && action != AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED) return
+
+        val days = DayRepository(context).load()
+        DailyReminderScheduler.sync(context, days)
+        if (context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("pinnedNotif", false)) {
+            PinnedNotification.update(context, days)
+            PinnedNotification.scheduleMidnightRefresh(context)
+        }
+        CountdownWidget.update(context, days)
     }
 }

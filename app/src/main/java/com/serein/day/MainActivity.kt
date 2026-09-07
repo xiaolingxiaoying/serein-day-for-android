@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
                                     PinnedNotification.cancel(context)
                                 }
                                 DailyReminderScheduler.sync(context, d)
+                                CountdownWidget.update(context, d)
                             }
                         }
                 }
@@ -353,6 +354,9 @@ private fun SereinApp(
                             },
                             onWallpaperDimChange = { dim ->
                                 mutateDay(detailDay.id) { it.copy(wallpaperDim = dim) }
+                            },
+                            onDetailCardTransparencyChange = { transparent ->
+                                mutateDay(detailDay.id) { it.copy(detailCardTransparent = transparent) }
                             },
                             onAddSubDay = { title, date ->
                                 mutateDay(detailDay.id) { d ->

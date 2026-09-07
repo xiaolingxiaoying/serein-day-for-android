@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,8 +34,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.compose.material.icons.outlined.Inventory2
@@ -50,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,6 +71,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 private data class DetailPendingImage(
     val cover: Boolean,
@@ -100,6 +102,7 @@ fun DetailScreen(
     onWallpaperScaleChange: (ImageScaleMode) -> Unit,
     onWallpaperOpacityChange: (Float) -> Unit,
     onWallpaperDimChange: (Float) -> Unit,
+    onDetailCardTransparencyChange: (Boolean) -> Unit,
     onAddSubDay: (String, LocalDate) -> Unit,
     onEditSubDay: (String, String, LocalDate) -> Unit,
     onDeleteSubDay: (String) -> Unit
@@ -111,13 +114,17 @@ fun DetailScreen(
     var confirmDelete by remember { mutableStateOf(false) }
     var selectedSubDay by remember(day.id) { mutableStateOf<SubDay?>(null) }
     var editingSubDay by remember(day.id) { mutableStateOf<SubDay?>(null) }
-    var detailsExpanded by remember(day.id) { mutableStateOf(false) }
+    val detailPager = rememberPagerState(initialPage = 0, pageCount = { if (minimalMode) 1 else 2 })
+    val pagerScope = rememberCoroutineScope()
     val wallpaperBitmap = rememberCoverBitmap(day.wallpaper, coverStore)
     // 壁纸压暗强度：拖动时本地实时生效，松手才落库
     var wallpaperDim by remember(day.id, day.wallpaper) { mutableFloatStateOf(day.wallpaperDim ?: 0.45f) }
     val wallpaperOpacity = day.wallpaperOpacity ?: 1f
     val canEdit = !minimalMode && !day.archived
 
+    BackHandler(enabled = selectedSubDay == null && detailPager.currentPage > 0) {
+        pagerScope.launch { detailPager.animateScrollToPage(0) }
+    }
     BackHandler(enabled = selectedSubDay != null) { selectedSubDay = null }
 
     if (selectedSubDay != null) {
@@ -157,7 +164,10 @@ fun DetailScreen(
                 onCoverClick = if (!day.archived) { { pickingCover = true } } else null,
                 onShare = if (!day.archived) { { onShare(day) } } else null,
                 onArchive = if (!day.archived) { { onArchive(day.id) } } else null,
-                onEdit = if (canEdit) { { onEditEvent(day) } } else null
+                showMoreMenu = detailPager.currentPage == 0,
+                cardTransparent = day.detailCardTransparent,
+                onToggleCardTransparency = { onDetailCardTransparencyChange(!day.detailCardTransparent) },
+                onEdit = if (detailPager.currentPage == 1 && canEdit) { { onEditEvent(day) } } else null
             )
             if (day.archived) {
                 Text(
@@ -167,18 +177,31 @@ fun DetailScreen(
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 2.dp)
                 )
             }
-            if (minimalMode || detailsExpanded) {
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .navigationBarsPadding()
-                        .verticalScroll(rememberScrollState())
-                        .padding(start = 20.dp, end = 20.dp, bottom = if (wallpaperBitmap != null && !day.archived) 110.dp else 32.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    MilestoneCard(day, coverStore, minimal = minimalMode)
-                    if (!minimalMode) {
-                        DetailToggleButton(expanded = true, onClick = { detailsExpanded = false })
+            HorizontalPager(
+                state = detailPager,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                if (page == 0) {
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        MilestoneCard(day, coverStore, minimal = false)
+                    }
+                } else {
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .navigationBarsPadding()
+                            .verticalScroll(rememberScrollState())
+                            .padding(start = 20.dp, end = 20.dp, bottom = if (wallpaperBitmap != null && !day.archived) 110.dp else 32.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        MilestoneCard(day, coverStore, minimal = false)
                         ProgressSection(day)
                         SubDaysSection(
                             subs = day.subs,
@@ -192,26 +215,13 @@ fun DetailScreen(
                             onEditNote = onEditNote,
                             onDeleteNote = onDeleteNote
                         )
+                        Spacer(Modifier.height(6.dp))
+                        DetailActions(
+                            day = day,
+                            onRestore = { onRestore(day.id) },
+                            onDelete = { confirmDelete = true }
+                        )
                     }
-                    Spacer(Modifier.height(6.dp))
-                    DetailActions(
-                        day = day,
-                        onRestore = { onRestore(day.id) },
-                        onDelete = { confirmDelete = true }
-                    )
-                }
-            } else {
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    MilestoneCard(day, coverStore, minimal = false)
-                    Spacer(Modifier.height(12.dp))
-                    DetailToggleButton(expanded = false, onClick = { detailsExpanded = true })
                 }
             }
         }
@@ -321,34 +331,6 @@ fun DetailScreen(
     }
 }
 
-/** 详情展开控制：收起时让主卡保持聚焦，展开后显示完整信息。 */
-@Composable
-private fun DetailToggleButton(expanded: Boolean, onClick: () -> Unit) {
-    val s = LocalSerein.current
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(s.container)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 15.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
-    ) {
-        Text(
-            if (expanded) "收起详情" else "展开详情",
-            color = s.onSurface,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Icon(
-            if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-            contentDescription = null,
-            tint = s.onSurfaceVariant,
-            modifier = Modifier.size(18.dp)
-        )
-    }
-}
-
 @Composable
 private fun SubDayDetailScreen(
     sub: SubDay,
@@ -446,11 +428,14 @@ private fun DetailTopBar(
     onCoverClick: (() -> Unit)?,
     onShare: (() -> Unit)?,
     onArchive: (() -> Unit)?,
+    showMoreMenu: Boolean,
+    cardTransparent: Boolean,
+    onToggleCardTransparency: () -> Unit,
     onEdit: (() -> Unit)?
 ) {
     val s = LocalSerein.current
     val fg = if (onWallpaper) Color.White else s.onSurface
-    var showMoreMenu by remember { mutableStateOf(false) }
+    var moreMenuExpanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 20.dp, top = 12.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -474,65 +459,73 @@ private fun DetailTopBar(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
-        Box {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(if (onWallpaper) Color.White.copy(alpha = 0.85f) else s.container)
-                    .clickable { showMoreMenu = true },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Filled.MoreVert,
-                    contentDescription = "更多操作",
-                    tint = if (onWallpaper) s.onSurface else s.primary,
-                    modifier = Modifier.size(21.dp)
-                )
-            }
-            DropdownMenu(
-                expanded = showMoreMenu,
-                onDismissRequest = { showMoreMenu = false }
-            ) {
-                onShare?.let { share ->
-                    DropdownMenuItem(
-                        text = { Text("分享卡片") },
-                        leadingIcon = { Icon(Icons.Outlined.Share, contentDescription = null) },
-                        onClick = {
-                            showMoreMenu = false
-                            share()
-                        }
+        if (showMoreMenu) {
+            Box {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(if (onWallpaper) Color.White.copy(alpha = 0.85f) else s.container)
+                        .clickable { moreMenuExpanded = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = "更多操作",
+                        tint = if (onWallpaper) s.onSurface else s.primary,
+                        modifier = Modifier.size(21.dp)
                     )
                 }
-                onArchive?.let { archive ->
-                    DropdownMenuItem(
-                        text = { Text("封存") },
-                        leadingIcon = { Icon(Icons.Outlined.Inventory2, contentDescription = null) },
-                        onClick = {
-                            showMoreMenu = false
-                            archive()
-                        }
-                    )
-                }
-                DropdownMenuItem(
-                    text = { Text("更换详情页背景") },
-                    leadingIcon = { Icon(Icons.Outlined.Wallpaper, contentDescription = null) },
-                    onClick = {
-                        showMoreMenu = false
-                        onWallpaperClick()
+                DropdownMenu(
+                    expanded = moreMenuExpanded,
+                    onDismissRequest = { moreMenuExpanded = false }
+                ) {
+                    onShare?.let { share ->
+                        DropdownMenuItem(
+                            text = { Text("分享卡片") },
+                            leadingIcon = { Icon(Icons.Outlined.Share, contentDescription = null) },
+                            onClick = {
+                                moreMenuExpanded = false
+                                share()
+                            }
+                        )
                     }
-                )
-                onCoverClick?.let { cover ->
+                    onArchive?.let { archive ->
+                        DropdownMenuItem(
+                            text = { Text("封存") },
+                            leadingIcon = { Icon(Icons.Outlined.Inventory2, contentDescription = null) },
+                            onClick = {
+                                moreMenuExpanded = false
+                                archive()
+                            }
+                        )
+                    }
                     DropdownMenuItem(
-                        text = { Text("更换封面图片") },
-                        leadingIcon = { Icon(Icons.Outlined.Wallpaper, contentDescription = null) },
-                        onClick = { showMoreMenu = false; cover() }
+                        text = { Text(if (cardTransparent) "恢复卡片不透明" else "卡片半透明") },
+                        onClick = {
+                            moreMenuExpanded = false
+                            onToggleCardTransparency()
+                        }
                     )
+                    DropdownMenuItem(
+                        text = { Text("更换详情页背景") },
+                        leadingIcon = { Icon(Icons.Outlined.Wallpaper, contentDescription = null) },
+                        onClick = {
+                            moreMenuExpanded = false
+                            onWallpaperClick()
+                        }
+                    )
+                    onCoverClick?.let { cover ->
+                        DropdownMenuItem(
+                            text = { Text("更换封面图片") },
+                            leadingIcon = { Icon(Icons.Outlined.Wallpaper, contentDescription = null) },
+                            onClick = { moreMenuExpanded = false; cover() }
+                        )
+                    }
                 }
             }
         }
         if (onEdit != null) {
-            Spacer(Modifier.width(10.dp))
             // 青柠圆形编辑钮（原长条编辑按钮的图标 + 配色）
             Box(
                 modifier = Modifier
@@ -632,7 +625,7 @@ private fun MilestoneCard(day: Countdown, coverStore: CoverStore, minimal: Boole
         return
     }
 
-    HeroCard(day, coverStore)
+    HeroCard(day, coverStore, transparent = day.detailCardTransparent)
 }
 
 /** 独立的里程碑进度区：放在小倒数日和小记之后，避免挤在主卡片里。 */

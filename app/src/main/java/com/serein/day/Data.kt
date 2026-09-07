@@ -67,6 +67,7 @@ data class SubDay(
  * date 为公历锚点日期；lunar=true 表示按其农历月日记忆；repeatYearly=true 表示每年重复。
  * cover 为卡片封面副本文件名；wallpaper 为详情页背景壁纸副本文件名（两者独立）。
  * wallpaperDim 为详情页壁纸压暗遮罩强度（0–0.85），null 表示默认 0.45。
+ * detailCardTransparent 控制详情页倒数卡片是否以半透明方式显示。
  * subs 为小倒数日列表。
  */
 @Immutable
@@ -85,6 +86,7 @@ data class Countdown(
     val wallpaperScale: ImageScaleMode = ImageScaleMode.CROP,
     val wallpaperOpacity: Float? = null,
     val wallpaperDim: Float? = null,
+    val detailCardTransparent: Boolean = false,
     val subs: List<SubDay> = emptyList(),
     val remind: Boolean = false,
     val dailyRemind: Boolean = false,
@@ -162,6 +164,7 @@ class DayRepository(context: Context) {
                 wallpaperScale = ImageScaleMode.fromKey(item.optString("wallpaperScale")),
                 wallpaperOpacity = item.optDouble("wallpaperOpacity").takeIf { !it.isNaN() }?.toFloat()?.coerceIn(0.1f, 1f),
                 wallpaperDim = item.optDouble("wallpaperDim").takeIf { !it.isNaN() }?.toFloat()?.coerceIn(0f, 0.85f),
+                detailCardTransparent = item.optBoolean("detailCardTransparent"),
                 subs = subs,
                 remind = item.optBoolean("remind"),
                 dailyRemind = item.optBoolean("dailyRemind"),
@@ -257,6 +260,7 @@ class DayRepository(context: Context) {
                     put("wallpaperScale", day.wallpaperScale.key)
                     day.wallpaperOpacity?.let { put("wallpaperOpacity", it.toDouble()) }
                     day.wallpaperDim?.let { put("wallpaperDim", it.toDouble()) }
+                    put("detailCardTransparent", day.detailCardTransparent)
                     put("remind", day.remind)
                     put("dailyRemind", day.dailyRemind)
                     put("dailyRemindTime", day.dailyRemindTime)
