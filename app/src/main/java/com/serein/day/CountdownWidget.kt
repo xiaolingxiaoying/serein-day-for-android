@@ -77,16 +77,15 @@ object CountdownWidget {
             ?: active.minByOrNull { abs(remainingDays(it, today)) }
 
         if (selected == null) {
-            views.setTextViewText(R.id.widget_title, "还没有倒数日")
-            views.setTextViewText(R.id.widget_status, "添加一个重要时刻吧")
+            views.setTextViewText(R.id.widget_title, "还没有倒数日 · 添加一个重要时刻吧")
             views.setTextViewText(R.id.widget_days, "—")
             views.setTextViewText(R.id.widget_target, "Serein Day")
         } else {
             val remaining = remainingDays(selected, today)
-            views.setTextViewText(R.id.widget_title, selected.title)
-            views.setTextViewText(R.id.widget_status, statusWord(remaining))
+            views.setTextViewText(R.id.widget_title, "${selected.title} ${statusWord(remaining)}")
             views.setTextViewText(R.id.widget_days, abs(remaining).toString())
-            views.setTextViewText(R.id.widget_target, targetDate(selected).format(FmtDot))
+            val target = targetDate(selected, today)
+            views.setTextViewText(R.id.widget_target, "${target.format(FmtIso)} ${weekdayFull(target)}")
         }
 
         val openApp = PendingIntent.getActivity(
@@ -128,7 +127,6 @@ object CountdownWidget {
             verticalPadding
         )
         views.setTextViewTextSize(R.id.widget_title, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 16f else 18f)
-        views.setTextViewTextSize(R.id.widget_status, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 10f else 11f)
         views.setTextViewTextSize(R.id.widget_days, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 40f else 46f)
         views.setTextViewTextSize(R.id.widget_target, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 9f else 10f)
     }

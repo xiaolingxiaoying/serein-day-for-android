@@ -37,23 +37,10 @@
             android:padding="14dp">
 
     <TextView
-        android:layout_gravity="center_horizontal"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="距目标日"
-        android:textAllCaps="true"
-        android:textColor="#B9C0CA"
-        android:textSize="9sp"
-        android:shadowColor="#B3000000"
-        android:shadowDx="0"
-        android:shadowDy="1"
-        android:shadowRadius="2" />
-
-    <TextView
         android:id="@+id/widget_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="0dp"
         android:ellipsize="end"
         android:gravity="center"
         android:maxLines="1"
@@ -64,20 +51,6 @@
         android:shadowDx="0"
         android:shadowDy="1"
         android:shadowRadius="3" />
-
-    <TextView
-        android:id="@+id/widget_status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:layout_gravity="center_horizontal"
-        android:gravity="center"
-        android:textColor="#B9C0CA"
-        android:textSize="11sp"
-        android:shadowColor="#B3000000"
-        android:shadowDx="0"
-        android:shadowDy="1"
-        android:shadowRadius="2" />
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -98,18 +71,6 @@
             android:shadowDy="1"
             android:shadowRadius="3" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:layout_marginStart="3dp"
-            android:text="天"
-            android:textColor="#F8F8F4"
-            android:textSize="12sp"
-            android:shadowColor="#B3000000"
-            android:shadowDx="0"
-            android:shadowDy="1"
-            android:shadowRadius="2" />
     </LinearLayout>
 
     <TextView
@@ -117,14 +78,11 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
-        android:background="@drawable/widget_target_background"
+        android:layout_marginTop="8dp"
         android:ellipsize="end"
         android:maxLines="1"
-        android:paddingHorizontal="8dp"
-        android:paddingVertical="3dp"
-        android:textColor="#151712"
-        android:textSize="10sp"
-        android:textStyle="bold" />
+        android:textColor="#F8F8F4"
+        android:textSize="11sp" />
         </LinearLayout>
     </FrameLayout>
 </FrameLayout>
