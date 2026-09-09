@@ -99,11 +99,23 @@ class MainActivity : ComponentActivity() {
                         onBooksChange = { books = it; repository.saveBooks(it) },
                         coverStore = coverStore,
                         paletteIndex = paletteIndex,
-                        onPaletteChange = { paletteIndex = it; settingsPrefs.edit().putInt("palette", it).apply() },
+                        onPaletteChange = {
+                            paletteIndex = it
+                            settingsPrefs.edit().putInt("palette", it).apply()
+                            CountdownWidget.update(context, days)
+                        },
                         customPrimary = customPrimary,
-                        onCustomPrimaryChange = { customPrimary = it; settingsPrefs.edit().putInt("customPrimary", it).apply() },
+                        onCustomPrimaryChange = {
+                            customPrimary = it
+                            settingsPrefs.edit().putInt("customPrimary", it).apply()
+                            CountdownWidget.update(context, days)
+                        },
                         modeIndex = modeIndex,
-                        onModeChange = { modeIndex = it; settingsPrefs.edit().putInt("mode", it).apply() },
+                        onModeChange = {
+                            modeIndex = it
+                            settingsPrefs.edit().putInt("mode", it).apply()
+                            CountdownWidget.update(context, days)
+                        },
                         haptics = haptics,
                         onHapticsChange = { haptics = it; settingsPrefs.edit().putBoolean("haptics", it).apply() },
                         pinnedNotif = pinnedNotif,

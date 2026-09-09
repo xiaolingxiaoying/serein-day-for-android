@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
+import androidx.compose.ui.graphics.toArgb
 import java.time.LocalDate
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -52,6 +53,7 @@ object CountdownWidget {
 
     private fun views(context: Context, days: List<Countdown>, appWidgetId: Int): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_countdown)
+        applyAppearance(context, views)
         applySizeProfile(context, views, appWidgetId)
         val backgroundName = CountdownWidgetSelection.backgroundName(context, appWidgetId)
         val background = backgroundName?.let { decodeSampledOrientedBitmap(CoverStore(context).resolve(it), maxDimension = 600) }
@@ -98,6 +100,25 @@ object CountdownWidget {
         return views
     }
 
+    private fun applyAppearance(context: Context, views: RemoteViews) {
+        val settings = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        val mode = settings.getInt("mode", 2).coerceIn(0, 2)
+        val dark = when (mode) {
+            0 -> false
+            1 -> true
+            else -> (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+        }
+        val palette = paletteFor(
+            settings.getInt("palette", 0).coerceIn(0, CUSTOM_PALETTE_INDEX),
+            dark,
+            settings.getInt("customPrimary", AcidLime.toArgb())
+        )
+        val accent = palette.accent.toArgb()
+        views.setTextColor(R.id.widget_days, accent)
+        views.setTextColor(R.id.widget_target, accent)
+    }
+
     /**
      * Xiaomi launchers can give a 2x2 widget a taller-than-wide rectangle because
      * their grid cells are not square. Keep the outer widget controlled by the
@@ -128,7 +149,7 @@ object CountdownWidget {
         )
         views.setTextViewTextSize(R.id.widget_title, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 16f else 18f)
         views.setTextViewTextSize(R.id.widget_days, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 40f else 46f)
-        views.setTextViewTextSize(R.id.widget_target, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 9f else 10f)
+        views.setTextViewTextSize(R.id.widget_target, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 12f else 13f)
     }
 
     private fun dpToPx(context: Context, value: Float): Int =
