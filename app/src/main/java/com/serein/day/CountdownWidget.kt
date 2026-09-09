@@ -131,9 +131,9 @@ object CountdownWidget {
             horizontalPadding,
             verticalPadding
         )
-        views.setTextViewTextSize(R.id.widget_title, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 16f else 18f)
-        views.setTextViewTextSize(R.id.widget_days, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 40f else 46f)
-        views.setTextViewTextSize(R.id.widget_target, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 12f else 13f)
+        views.setTextViewTextSize(R.id.widget_title, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 17f else 19f)
+        views.setTextViewTextSize(R.id.widget_days, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 46f else 52f)
+        views.setTextViewTextSize(R.id.widget_target, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 13f else 14f)
     }
 
     private fun dpToPx(context: Context, value: Float): Int =

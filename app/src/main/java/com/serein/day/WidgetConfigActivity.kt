@@ -25,9 +25,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -68,6 +71,7 @@ class WidgetConfigActivity : ComponentActivity() {
             SereinTheme(paletteFor(paletteIndex, dark, customPrimary), dark) {
                 var backgroundName by remember { mutableStateOf(CountdownWidgetSelection.backgroundName(this, appWidgetId)) }
                 var widgetAccent by remember { mutableStateOf(CountdownWidgetSelection.widgetAccent(this, appWidgetId)) }
+                var showCustomAccent by remember { mutableStateOf(false) }
                 var showBackgroundSource by remember { mutableStateOf(false) }
                 var pendingBackground by remember { mutableStateOf<WidgetPendingBackground?>(null) }
                 val coverStore = remember { CoverStore(this@WidgetConfigActivity) }
@@ -88,6 +92,7 @@ class WidgetConfigActivity : ComponentActivity() {
                         widgetAccent = color
                         CountdownWidget.update(this, DayRepository(this).load())
                     },
+                    onCustomAccent = { showCustomAccent = true },
                     onSelect = { day ->
                         CountdownWidgetSelection.save(this, appWidgetId, day.id)
                         CountdownWidget.update(this, DayRepository(this).load())
@@ -150,6 +155,18 @@ class WidgetConfigActivity : ComponentActivity() {
                         }
                     )
                 }
+                if (showCustomAccent) {
+                    WidgetCustomColorSheet(
+                        initial = widgetAccent,
+                        onDismiss = { showCustomAccent = false },
+                        onConfirm = { color ->
+                            CountdownWidgetSelection.saveWidgetAccent(this, appWidgetId, color)
+                            widgetAccent = color
+                            CountdownWidget.update(this, DayRepository(this).load())
+                            showCustomAccent = false
+                        }
+                    )
+                }
             }
         }
     }
@@ -164,6 +181,7 @@ private fun WidgetConfigScreen(
     onPickBackground: () -> Unit,
     onRemoveBackground: () -> Unit,
     onAccentChange: (Int) -> Unit,
+    onCustomAccent: () -> Unit,
     onSelect: (Countdown) -> Unit
 ) {
     val s = LocalSerein.current
@@ -196,6 +214,28 @@ private fun WidgetConfigScreen(
             if (hasBackground) {
                 Text("移除", color = s.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable(onClick = onRemoveBackground).padding(8.dp))
             }
+        }
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 10.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .clickable(onClick = onCustomAccent)
+                .background(s.container)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(Color(widgetAccent))
+            )
+            Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                Text("自定义颜色", color = s.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("独立于软件外观色板", color = s.onSurfaceVariant, fontSize = 12.sp)
+            }
+            Text("调整", color = s.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         }
         Text(
             "组件主题色",
@@ -258,6 +298,45 @@ private fun WidgetConfigScreen(
                     Text("天", color = s.onSurfaceVariant, fontSize = 12.sp)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun WidgetCustomColorSheet(
+    initial: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    val start = FloatArray(3)
+    android.graphics.Color.colorToHSV(initial, start)
+    var hue by remember { mutableFloatStateOf(start[0]) }
+    var saturation by remember { mutableFloatStateOf(start[1].coerceIn(0.3f, 1f)) }
+    val current = Color.hsv(hue, saturation, 0.9f)
+    val argb = android.graphics.Color.argb(
+        255,
+        (current.red * 255).toInt(),
+        (current.green * 255).toInt(),
+        (current.blue * 255).toInt()
+    )
+    SereinSheet(
+        title = "自定义组件主题色",
+        onDismiss = onDismiss,
+        trailingText = "使用此颜色",
+        onTrailing = { onConfirm(argb) }
+    ) {
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(44.dp).clip(CircleShape).background(current))
+                Column(Modifier.padding(start = 12.dp)) {
+                    Text("小组件独立配色", color = LocalSerein.current.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text("不会改变软件主题色", color = LocalSerein.current.onSurfaceVariant, fontSize = 12.sp)
+                }
+            }
+            Text("色相", color = LocalSerein.current.onSurfaceVariant, fontSize = 12.sp)
+            Slider(value = hue, onValueChange = { hue = it }, valueRange = 0f..360f)
+            Text("饱和度", color = LocalSerein.current.onSurfaceVariant, fontSize = 12.sp)
+            Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0.3f..1f)
         }
     }
 }
