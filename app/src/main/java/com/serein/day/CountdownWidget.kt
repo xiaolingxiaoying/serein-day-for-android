@@ -123,7 +123,7 @@ object CountdownWidget {
         val tall = !squareApplied && width > 0 && height > width * TALL_WIDGET_RATIO
 
         val horizontalPadding = dpToPx(context, 14f)
-        val verticalPadding = dpToPx(context, if (tall) 10f else 14f)
+        val verticalPadding = dpToPx(context, if (squareApplied) 8f else if (tall) 10f else 14f)
         views.setViewPadding(
             R.id.widget_content,
             horizontalPadding,

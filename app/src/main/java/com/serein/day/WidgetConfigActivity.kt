@@ -254,13 +254,17 @@ private fun WidgetConfigScreen(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            (0 until 8).forEach { index ->
-                val color = paletteDotColor(index)
+            val colors = (0 until 8).map { paletteDotColor(it) } + Color.White
+            colors.forEach { color ->
                 Box(
                     modifier = Modifier
                         .size(28.dp)
                         .clip(CircleShape)
-                        .then(if (widgetAccent == color.toArgb()) Modifier.border(2.dp, s.onSurface, CircleShape) else Modifier)
+                        .then(
+                            if (widgetAccent == color.toArgb()) Modifier.border(2.dp, s.onSurface, CircleShape)
+                            else if (color == Color.White) Modifier.border(1.dp, s.outlineVariant, CircleShape)
+                            else Modifier
+                        )
                         .background(color)
                         .clickable { onAccentChange(color.toArgb()) }
                 )
