@@ -51,6 +51,7 @@ object CountdownWidget {
 
     private fun views(context: Context, days: List<Countdown>, appWidgetId: Int): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_countdown)
+        applySizeProfile(context, views, appWidgetId)
         val backgroundName = CountdownWidgetSelection.backgroundName(context, appWidgetId)
         val background = backgroundName?.let { decodeSampledOrientedBitmap(CoverStore(context).resolve(it), maxDimension = 600) }
         if (background != null) {
@@ -96,6 +97,37 @@ object CountdownWidget {
         views.setOnClickPendingIntent(R.id.widget_root, openApp)
         return views
     }
+
+    /**
+     * Xiaomi launchers can give a 2x2 widget a taller-than-wide rectangle because
+     * their grid cells are not square. Keep the outer widget controlled by the
+     * host, but make the information hierarchy more compact in that profile.
+     */
+    private fun applySizeProfile(context: Context, views: RemoteViews, appWidgetId: Int) {
+        val options = AppWidgetManager.getInstance(context).getAppWidgetOptions(appWidgetId)
+        val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
+        val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)
+        val tall = width > 0 && height > width * TALL_WIDGET_RATIO
+
+        val horizontalPadding = dpToPx(context, 14f)
+        val verticalPadding = dpToPx(context, if (tall) 10f else 14f)
+        views.setViewPadding(
+            R.id.widget_content,
+            horizontalPadding,
+            verticalPadding,
+            horizontalPadding,
+            verticalPadding
+        )
+        views.setTextViewTextSize(R.id.widget_title, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 16f else 18f)
+        views.setTextViewTextSize(R.id.widget_status, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 10f else 11f)
+        views.setTextViewTextSize(R.id.widget_days, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 40f else 46f)
+        views.setTextViewTextSize(R.id.widget_target, android.util.TypedValue.COMPLEX_UNIT_SP, if (tall) 9f else 10f)
+    }
+
+    private fun dpToPx(context: Context, value: Float): Int =
+        (value * context.resources.displayMetrics.density).roundToInt()
+
+    private const val TALL_WIDGET_RATIO = 1.15f
 }
 
 /** 每个桌面组件独立保存其展示的倒数日；未选时使用置顶/最近事件作为兜底。 */
