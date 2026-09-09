@@ -6,8 +6,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,10 +17,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Text
@@ -30,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,18 +67,25 @@ class WidgetConfigActivity : ComponentActivity() {
         setContent {
             SereinTheme(paletteFor(paletteIndex, dark, customPrimary), dark) {
                 var backgroundName by remember { mutableStateOf(CountdownWidgetSelection.backgroundName(this, appWidgetId)) }
+                var widgetAccent by remember { mutableStateOf(CountdownWidgetSelection.widgetAccent(this, appWidgetId)) }
                 var showBackgroundSource by remember { mutableStateOf(false) }
                 var pendingBackground by remember { mutableStateOf<WidgetPendingBackground?>(null) }
                 val coverStore = remember { CoverStore(this@WidgetConfigActivity) }
                 WidgetConfigScreen(
                     days = days,
                     hasBackground = backgroundName != null,
+                    widgetAccent = widgetAccent,
                     onBack = { finish() },
                     onPickBackground = { showBackgroundSource = true },
                     onRemoveBackground = {
                         backgroundName?.let { CoverStore(this).remove(it) }
                         CountdownWidgetSelection.saveBackground(this, appWidgetId, null)
                         backgroundName = null
+                        CountdownWidget.update(this, DayRepository(this).load())
+                    },
+                    onAccentChange = { color ->
+                        CountdownWidgetSelection.saveWidgetAccent(this, appWidgetId, color)
+                        widgetAccent = color
                         CountdownWidget.update(this, DayRepository(this).load())
                     },
                     onSelect = { day ->
@@ -147,9 +159,11 @@ class WidgetConfigActivity : ComponentActivity() {
 private fun WidgetConfigScreen(
     days: List<Countdown>,
     hasBackground: Boolean,
+    widgetAccent: Int,
     onBack: () -> Unit,
     onPickBackground: () -> Unit,
     onRemoveBackground: () -> Unit,
+    onAccentChange: (Int) -> Unit,
     onSelect: (Countdown) -> Unit
 ) {
     val s = LocalSerein.current
@@ -181,6 +195,35 @@ private fun WidgetConfigScreen(
             }
             if (hasBackground) {
                 Text("移除", color = s.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable(onClick = onRemoveBackground).padding(8.dp))
+            }
+        }
+        Text(
+            "组件主题色",
+            color = s.onSurfaceVariant,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 24.dp, top = 8.dp, bottom = 8.dp)
+        )
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 20.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(s.container)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            (0 until 8).forEach { index ->
+                val color = paletteDotColor(index)
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .then(if (widgetAccent == color.toArgb()) Modifier.border(2.dp, s.onSurface, CircleShape) else Modifier)
+                        .background(color)
+                        .clickable { onAccentChange(color.toArgb()) }
+                )
             }
         }
         LazyColumn(

@@ -9,7 +9,6 @@ import android.content.Intent
 import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
-import androidx.compose.ui.graphics.toArgb
 import java.time.LocalDate
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -53,7 +52,7 @@ object CountdownWidget {
 
     private fun views(context: Context, days: List<Countdown>, appWidgetId: Int): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_countdown)
-        applyAppearance(context, views)
+        applyAppearance(context, views, appWidgetId)
         applySizeProfile(context, views, appWidgetId)
         val backgroundName = CountdownWidgetSelection.backgroundName(context, appWidgetId)
         val background = backgroundName?.let { decodeSampledOrientedBitmap(CoverStore(context).resolve(it), maxDimension = 600) }
@@ -100,22 +99,8 @@ object CountdownWidget {
         return views
     }
 
-    private fun applyAppearance(context: Context, views: RemoteViews) {
-        val settings = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-        val mode = settings.getInt("mode", 2).coerceIn(0, 2)
-        val dark = when (mode) {
-            0 -> false
-            1 -> true
-            else -> (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-                android.content.res.Configuration.UI_MODE_NIGHT_YES
-        }
-        val palette = paletteFor(
-            settings.getInt("palette", 0).coerceIn(0, CUSTOM_PALETTE_INDEX),
-            dark,
-            settings.getInt("customPrimary", AcidLime.toArgb())
-        )
-        val accent = palette.accent.toArgb()
-        views.setTextColor(R.id.widget_days, accent)
+    private fun applyAppearance(context: Context, views: RemoteViews, appWidgetId: Int) {
+        views.setTextColor(R.id.widget_days, CountdownWidgetSelection.widgetAccent(context, appWidgetId))
     }
 
     /**
@@ -163,6 +148,7 @@ object CountdownWidgetSelection {
     private const val KEY_PREFIX = "day_"
     private const val BACKGROUND_PREFIX = "background_"
     private const val BACKGROUND_OPACITY_PREFIX = "background_opacity_"
+    private const val ACCENT_PREFIX = "accent_"
 
     fun selectedDayId(context: Context, appWidgetId: Int): String? =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("$KEY_PREFIX$appWidgetId", null)
@@ -198,6 +184,17 @@ object CountdownWidgetSelection {
             .apply()
     }
 
+    fun widgetAccent(context: Context, appWidgetId: Int): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt("$ACCENT_PREFIX$appWidgetId", 0xFFC8F531.toInt())
+
+    fun saveWidgetAccent(context: Context, appWidgetId: Int, color: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putInt("$ACCENT_PREFIX$appWidgetId", color)
+            .apply()
+    }
+
     fun remove(context: Context, appWidgetIds: IntArray) {
         val editor = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
         appWidgetIds.forEach {
@@ -205,6 +202,7 @@ object CountdownWidgetSelection {
             backgroundName(context, it)?.let { name -> CoverStore(context).remove(name) }
             editor.remove("$BACKGROUND_PREFIX$it")
             editor.remove("$BACKGROUND_OPACITY_PREFIX$it")
+            editor.remove("$ACCENT_PREFIX$it")
         }
         editor.apply()
     }
