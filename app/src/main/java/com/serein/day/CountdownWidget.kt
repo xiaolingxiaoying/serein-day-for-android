@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
 import java.time.LocalDate
@@ -107,7 +108,15 @@ object CountdownWidget {
         val options = AppWidgetManager.getInstance(context).getAppWidgetOptions(appWidgetId)
         val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
         val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)
-        val tall = width > 0 && height > width * TALL_WIDGET_RATIO
+        val squareApplied = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && width > 0 && height > 0) {
+            val side = minOf(width, height).toFloat()
+            views.setViewLayoutWidth(R.id.widget_card, side, android.util.TypedValue.COMPLEX_UNIT_DIP)
+            views.setViewLayoutHeight(R.id.widget_card, side, android.util.TypedValue.COMPLEX_UNIT_DIP)
+            true
+        } else {
+            false
+        }
+        val tall = !squareApplied && width > 0 && height > width * TALL_WIDGET_RATIO
 
         val horizontalPadding = dpToPx(context, 14f)
         val verticalPadding = dpToPx(context, if (tall) 10f else 14f)

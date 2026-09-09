@@ -3,32 +3,38 @@
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_card_background"
-    android:clipToOutline="true"
     android:gravity="center">
 
-    <ImageView
-        android:id="@+id/widget_background"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:contentDescription=""
-        android:scaleType="centerCrop"
-        android:visibility="gone" />
-
     <FrameLayout
-        android:id="@+id/widget_scrim"
+        android:id="@+id/widget_card"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#00000000"
-        android:visibility="gone" />
+        android:layout_gravity="center"
+        android:background="@drawable/widget_card_background"
+        android:clipToOutline="true">
 
-    <LinearLayout
+        <ImageView
+            android:id="@+id/widget_background"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription=""
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+
+        <FrameLayout
+            android:id="@+id/widget_scrim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#00000000"
+            android:visibility="gone" />
+
+        <LinearLayout
         android:id="@+id/widget_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:gravity="center_vertical"
         android:orientation="vertical"
-        android:padding="14dp">
+            android:padding="14dp">
 
     <TextView
         android:layout_width="wrap_content"
@@ -114,5 +120,6 @@
         android:textColor="#151712"
         android:textSize="10sp"
         android:textStyle="bold" />
-    </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
 </FrameLayout>
