@@ -116,7 +116,6 @@ object CountdownWidget {
         )
         val accent = palette.accent.toArgb()
         views.setTextColor(R.id.widget_days, accent)
-        views.setTextColor(R.id.widget_target, accent)
     }
 
     /**
