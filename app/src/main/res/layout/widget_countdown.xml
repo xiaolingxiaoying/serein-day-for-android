@@ -32,11 +32,12 @@
         android:id="@+id/widget_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:gravity="center_vertical"
+            android:gravity="center"
         android:orientation="vertical"
             android:padding="14dp">
 
     <TextView
+        android:layout_gravity="center_horizontal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="距目标日"
@@ -54,6 +55,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:ellipsize="end"
+        android:gravity="center"
         android:maxLines="1"
         android:textColor="#F8F8F4"
         android:textSize="18sp"
@@ -68,6 +70,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center"
         android:textColor="#B9C0CA"
         android:textSize="11sp"
         android:shadowColor="#B3000000"
@@ -112,6 +116,7 @@
         android:id="@+id/widget_target"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
         android:background="@drawable/widget_target_background"
         android:ellipsize="end"
         android:maxLines="1"
